@@ -166,5 +166,6 @@ CREATE TABLE IF NOT EXISTS spin_results (
 
 -- RLS setup (simple example for games)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can read own data" ON users;
 CREATE POLICY "Users can read own data" ON users FOR SELECT USING (auth.uid()::text = telegram_id::text);
 -- Admin backend will bypass RLS via service role key.
