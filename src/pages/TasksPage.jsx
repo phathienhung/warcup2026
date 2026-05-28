@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DAILY_TASKS, ACHIEVEMENTS, formatNumber } from '../data/constants';
 import telegram from '../lib/telegram';
 

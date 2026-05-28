@@ -108,7 +108,44 @@ CREATE TABLE IF NOT EXISTS clans (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS game_config (
+  id INT PRIMARY KEY DEFAULT 1,
+  energy_regen_rate_ms INT DEFAULT 1000,
+  energy_regen_amount INT DEFAULT 1,
+  max_energy_base INT DEFAULT 1000,
+  base_mining_speed INT DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS nations (
+  code TEXT PRIMARY KEY,
+  name TEXT,
+  flag TEXT,
+  multiplier FLOAT DEFAULT 1.0
+);
+
+CREATE TABLE IF NOT EXISTS shop_items (
+  id TEXT PRIMARY KEY,
+  type TEXT,
+  name TEXT,
+  description TEXT,
+  icon TEXT,
+  price BIGINT,
+  price_type TEXT, -- 'votes' or 'ton'
+  bonus_value FLOAT
+);
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id BIGINT REFERENCES users(telegram_id),
+  tx_type TEXT, -- 'deposit' or 'withdraw'
+  amount_ton FLOAT,
+  tx_hash TEXT UNIQUE,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS shop_purchases (
+
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id BIGINT REFERENCES users(telegram_id),
   item_type TEXT,

@@ -8,53 +8,49 @@ export const useGameStore = create((set, get) => ({
   miningSpeed: 1,
   energy: 1000,
   maxEnergy: 1000,
-  combo: 0,
-  comboMultiplier: 1,
-  lastTapTime: 0,
   tapCount: 0,
   pendingTaps: 0,
   isSyncing: false,
 
-  // ── Energy Regen ──────────────────────────────────
-  energyRegenRate: 1, // per 3 seconds
+  // ── Config State ──────────────────────────────────
+  nations: [],
+  configLoaded: false,
+  energyRegenRateMs: 1000,
+  energyRegenAmount: 1,
   energyRegenInterval: null,
 
-  // ── Combo Thresholds ──────────────────────────────
-  comboThresholds: [
-    { combo: 0, multiplier: 1 },
-    { combo: 5, multiplier: 2 },
-    { combo: 15, multiplier: 3 },
-    { combo: 30, multiplier: 5 },
-    { combo: 50, multiplier: 10 },
-  ],
+  async loadConfig() {
+    try {
+      const { config, nations } = await api.get('/config');
+      set({
+        nations: nations || [],
+        energyRegenRateMs: config.energy_regen_rate_ms || 1000,
+        energyRegenAmount: config.energy_regen_amount || 1,
+        maxEnergy: config.max_energy_base || 1000,
+        miningSpeed: config.base_mining_speed || 1,
+        configLoaded: true
+      });
+      // Restart regen with new rate
+      get().stopEnergyRegen();
+      get().startEnergyRegen();
+    } catch (err) {
+      console.error('Failed to load config', err);
+    }
+  },
 
   // ── Tap Action ────────────────────────────────────
   tap(touchCount = 1) {
     const state = get();
     if (state.energy < touchCount) return { success: false, votes: 0 };
 
-    const now = Date.now();
-    const timeSinceLastTap = now - state.lastTapTime;
-    let newCombo = timeSinceLastTap < 500 ? state.combo + touchCount : touchCount;
-    if (timeSinceLastTap > 2000) newCombo = touchCount;
-
-    // Calculate combo multiplier
-    let comboMultiplier = 1;
-    for (const threshold of state.comboThresholds) {
-      if (newCombo >= threshold.combo) {
-        comboMultiplier = threshold.multiplier;
-      }
-    }
-
-    const votesEarned = state.miningSpeed * touchCount * comboMultiplier;
+    // 1 tap = 1 vote * miningSpeed * nationMultiplier (calculated later or handled backend)
+    // For simplicity, miningSpeed already includes multipliers calculated on backend
+    const votesEarned = state.miningSpeed * touchCount;
 
     set({
       totalVotes: state.totalVotes + votesEarned,
       availableVotes: state.availableVotes + votesEarned,
       energy: Math.max(0, state.energy - touchCount),
-      combo: newCombo,
-      comboMultiplier,
-      lastTapTime: now,
       tapCount: state.tapCount + touchCount,
       pendingTaps: state.pendingTaps + touchCount,
     });
@@ -64,7 +60,7 @@ export const useGameStore = create((set, get) => ({
       get().syncTaps();
     }
 
-    return { success: true, votes: votesEarned, combo: newCombo, comboMultiplier };
+    return { success: true, votes: votesEarned };
   },
 
   // ── Sync taps to server ───────────────────────────
@@ -78,9 +74,9 @@ export const useGameStore = create((set, get) => ({
     try {
       const result = await api.tap(tapsToSync);
       set({
-        totalVotes: result.totalVotes ?? get().totalVotes,
-        availableVotes: result.availableVotes ?? get().availableVotes,
-        miningSpeed: result.miningSpeed ?? get().miningSpeed,
+        totalVotes: result.stats.totalVotes ?? get().totalVotes,
+        availableVotes: result.stats.availableVotes ?? get().availableVotes,
+        energy: result.stats.energy ?? get().energy,
         isSyncing: false,
       });
     } catch (err) {
@@ -94,9 +90,9 @@ export const useGameStore = create((set, get) => ({
   startEnergyRegen() {
     const interval = setInterval(() => {
       set((state) => ({
-        energy: Math.min(state.maxEnergy, state.energy + state.energyRegenRate),
+        energy: Math.min(state.maxEnergy, state.energy + state.energyRegenAmount),
       }));
-    }, 3000);
+    }, get().energyRegenRateMs);
     set({ energyRegenInterval: interval });
   },
 
@@ -115,14 +111,6 @@ export const useGameStore = create((set, get) => ({
       energy: data.energy ?? 1000,
       maxEnergy: data.max_energy ?? 1000,
     });
-  },
-
-  // ── Reset combo on timeout ────────────────────────
-  checkComboTimeout() {
-    const state = get();
-    if (state.combo > 0 && Date.now() - state.lastTapTime > 2000) {
-      set({ combo: 0, comboMultiplier: 1 });
-    }
   },
 }));
 

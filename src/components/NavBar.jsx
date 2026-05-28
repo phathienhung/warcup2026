@@ -7,9 +7,9 @@ export default function NavBar() {
 
   const tabs = [
     { id: '/', label: 'Mine', icon: '⚽' },
-    { id: '/leaderboard', label: 'Rank', icon: '🏆' },
-    { id: '/tasks', label: 'Tasks', icon: '✅', hasBadge: true },
+    { id: '/prediction', label: 'Predict', icon: '🔮' },
     { id: '/shop', label: 'Shop', icon: '🛒' },
+    { id: '/tasks', label: 'Tasks', icon: '✅', hasBadge: true },
     { id: '/profile', label: 'Profile', icon: '👤' },
   ];
 
