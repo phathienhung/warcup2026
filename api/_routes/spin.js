@@ -1,5 +1,5 @@
-import { supabase } from './_lib/supabase.js';
-import { validateInitData } from './_lib/auth.js';
+import { supabase } from '../_lib/supabase.js';
+import { validateInitData } from '../_lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
