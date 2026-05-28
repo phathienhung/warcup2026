@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import useUserStore from './store/userStore';
 import useGameStore from './store/gameStore';
+import { NATIONS } from './data/countries';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import TasksPage from './pages/TasksPage';
@@ -19,21 +20,53 @@ function LoadingScreen() {
 }
 
 function NationSelectionScreen({ onSelect }) {
-  const nations = useGameStore(s => s.nations) || [];
+  // Use nations from gameStore (Supabase), fallback to local NATIONS data
+  const storeNations = useGameStore(s => s.nations);
+  const nations = storeNations && storeNations.length > 0 
+    ? storeNations 
+    : NATIONS.map(n => ({ ...n, multiplier: 1.0 }));
   
+  const groups = [...new Set(nations.map(n => n.group))].sort();
+  const [selectedGroup, setSelectedGroup] = useState('A');
+  const filtered = nations.filter(n => n.group === selectedGroup);
+
   return (
-    <div className="page" style={{ zIndex: 1000, position: 'fixed', inset: 0, background: 'var(--bg-deep)' }}>
-      <div className="page-header">
+    <div className="page" style={{ position: 'fixed', inset: 0, background: 'var(--bg-deep)', zIndex: 1000, overflow: 'auto' }}>
+      <div className="page-header" style={{ paddingTop: '40px' }}>
+        <div style={{ fontSize: '4rem', marginBottom: '12px' }}>⚽</div>
         <h1 className="page-title">Choose Your Nation</h1>
         <div className="page-subtitle">Select the team you want to support for World Cup 2026</div>
       </div>
-      <div className="nation-grid" style={{ padding: '0 16px', overflowY: 'auto', maxHeight: '75vh' }}>
-        {nations.map(nation => (
-          <div key={nation.code} className="nation-item" onClick={() => onSelect(nation.code)}>
-            <div className="nation-flag" style={{ fontSize: '2.5rem' }}>{nation.flag}</div>
-            <div style={{ fontWeight: 'bold' }}>{nation.name}</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)' }}>x{nation.multiplier} Multiplier</div>
-          </div>
+
+      <div className="tabs mb-md" style={{ flexWrap: 'wrap', padding: '0 12px', gap: '4px' }}>
+        {groups.map(group => (
+          <button 
+            key={group} 
+            className={`tab ${selectedGroup === group ? 'active' : ''}`}
+            onClick={() => setSelectedGroup(group)}
+            style={{ minWidth: '42px', padding: '6px 10px', fontSize: '0.75rem' }}
+          >
+            {group}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', padding: '0 16px 120px 16px' }}>
+        {filtered.map(nation => (
+          <button 
+            key={nation.code} 
+            className="card"
+            onClick={() => onSelect(nation.code)}
+            style={{ 
+              display: 'flex', flexDirection: 'column', alignItems: 'center', 
+              padding: '16px 8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)', transition: 'all 0.2s ease'
+            }}
+          >
+            <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{nation.flag}</div>
+            <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px' }}>{nation.name}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--neon-green)' }}>x{nation.multiplier} Multiplier</div>
+          </button>
         ))}
       </div>
     </div>
@@ -42,7 +75,7 @@ function NationSelectionScreen({ onSelect }) {
 
 export default function App() {
   const { isLoading, isAuthenticated, authenticate, favoriteNation, selectNation } = useUserStore();
-  const { setGameState, startEnergyRegen, loadConfig, configLoaded } = useGameStore();
+  const { setGameState, startEnergyRegen, loadConfig } = useGameStore();
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
@@ -51,16 +84,18 @@ export default function App() {
 
   async function initApp() {
     try {
-      await loadConfig();
+      // Load config first (non-blocking if fails)
+      loadConfig().catch(() => {});
+      
       const data = await authenticate();
       if (data?.user) {
         setGameState(data.user);
       }
       startEnergyRegen();
-      setAppReady(true);
     } catch (err) {
       console.error('[App] Init failed:', err);
-      setAppReady(true); // Still show UI in dev mode
+    } finally {
+      setAppReady(true);
     }
   }
 
@@ -68,7 +103,7 @@ export default function App() {
     await selectNation(code);
   };
 
-  if ((isLoading || !configLoaded) && !appReady) {
+  if (!appReady) {
     return <LoadingScreen />;
   }
 
