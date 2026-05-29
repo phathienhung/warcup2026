@@ -77,7 +77,8 @@ export default async function handler(req, res) {
 
       // Offline energy regen
       const regenRateMs = 1000;
-      const energyGained = Math.floor(diffMs / regenRateMs);
+      const regenMultiplier = 1 + (dbUser.energy_regen_bonus || 0);
+      const energyGained = Math.floor(diffMs / regenRateMs) * regenMultiplier;
       const newEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
 
       await supabase
@@ -108,7 +109,8 @@ export default async function handler(req, res) {
         ...dbUser,
         mining_speed: computedSpeed,
         ton_balance: dbUser.ton_balance || 0,
-        friend_count: friendCount || 0
+        friend_count: friendCount || 0,
+        energy_regen_bonus: dbUser.energy_regen_bonus || 0
       }
     });
 

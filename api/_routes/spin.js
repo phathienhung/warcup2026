@@ -36,6 +36,10 @@ export default async function handler(req, res) {
           updates.xp = (dbUser.xp || 0) + reward.reward;
           const newLevel = computeLevelFromXp(updates.xp);
           if (newLevel > (dbUser.level || 1)) updates.level = newLevel;
+        } else if (reward.type === 'regen') {
+          updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + reward.reward;
+        } else if (reward.type === 'ton') {
+          updates.ton_balance = (dbUser.ton_balance || 0) + reward.reward;
         }
 
         // Save to users table

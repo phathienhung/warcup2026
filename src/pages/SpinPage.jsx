@@ -31,8 +31,27 @@ export default function SpinPage() {
 
     setTimeout(() => {
       setSpinning(false);
-      setResult(segments[target]);
+      const reward = segments[target];
+      setResult(reward);
       telegram.haptic.notification('success');
+
+      // Apply reward locally
+      if (reward.type === 'energy') {
+        useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
+      } else if (reward.type === 'votes') {
+        useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
+      } else if (reward.type === 'speed') {
+        useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + reward.reward }));
+      } else if (reward.type === 'xp') {
+        useUserStore.getState().addXp(reward.reward);
+      } else if (reward.type === 'regen') {
+        useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
+      } else if (reward.type === 'ton') {
+        useGameStore.setState(s => ({ tonBalance: s.tonBalance + reward.reward }));
+      }
+
+      // Save to database
+      api.spin('save_reward', reward).catch(e => console.error('Failed to save spin reward', e));
     }, 4000);
   };
 

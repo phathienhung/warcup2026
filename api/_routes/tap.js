@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       // 1. Get current user stats
       const { data: dbUser } = await supabase
         .from('users')
-        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, last_login')
+        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, energy_regen_bonus, last_login')
         .eq('telegram_id', user.id)
         .single();
 
@@ -44,7 +44,8 @@ export default async function handler(req, res) {
       const lastLogin = new Date(dbUser.last_login || now);
       const diffMs = now - lastLogin;
       const regenRateMs = 1000;
-      const energyGained = Math.floor(diffMs / regenRateMs);
+      const regenMultiplier = 1 + (dbUser.energy_regen_bonus || 0);
+      const energyGained = Math.floor(diffMs / regenRateMs) * regenMultiplier;
       const currentRegennedEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
 
       const energyCost = count * speed;

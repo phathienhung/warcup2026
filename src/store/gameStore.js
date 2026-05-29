@@ -124,6 +124,7 @@ export const useGameStore = create((set, get) => ({
       miningSpeed: data.mining_speed ?? 1,
       energy: data.energy ?? 1000,
       maxEnergy: data.max_energy ?? 1000,
+      energyRegenAmount: 1 + (data.energy_regen_bonus || 0),
     });
   },
 }));

@@ -151,7 +151,7 @@ function SpinModalContent() {
       } else if (reward.type === 'regen') {
         useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
       } else if (reward.type === 'ton') {
-        // TON reward handled by alert below
+        useGameStore.setState(s => ({ tonBalance: s.tonBalance + reward.reward }));
       }
 
       // Save to database

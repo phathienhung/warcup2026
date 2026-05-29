@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_regen_bonus INT DEFAULT 0;
