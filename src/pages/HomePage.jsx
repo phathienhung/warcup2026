@@ -9,7 +9,7 @@ import telegram from '../lib/telegram';
 import Modal from '../components/Modal';
 import { SPIN_SEGMENTS, formatNumberFull } from '../data/constants';
 import useUserStore from '../store/userStore';
-import { TonConnectButton, useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
+import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
@@ -113,43 +113,77 @@ function WalletModalContent() {
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [tonConnectUI] = useTonConnectUI();
-  const address = useTonAddress();
+  const address = useTonAddress(false); // raw address
+  const friendlyAddress = useTonAddress(); // user-friendly
+  const { totalVotes, availableVotes } = useGameStore();
   
+  const handleConnect = async () => {
+    try {
+      await tonConnectUI.openModal();
+    } catch (e) {
+      console.error('TonConnect modal error:', e);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await tonConnectUI.disconnect();
+    } catch (e) {
+      console.error('Disconnect error:', e);
+    }
+  };
+
   const handleDeposit = async () => {
     if (!depositAmount || Number(depositAmount) <= 0) return alert('Enter a valid amount');
-    if (!address) return alert('Please connect your wallet first!');
-    
-    const transaction = {
-      validUntil: Math.floor(Date.now() / 1000) + 300, // 5 min
-      messages: [
-        {
-          address: "EQB_Your_Backend_Wallet_Address_Here",
-          amount: (Number(depositAmount) * 1e9).toString() // in nanoTON
-        }
-      ]
-    };
-
-    try {
-      await tonConnectUI.sendTransaction(transaction);
-      alert('Deposit transaction sent successfully!');
-    } catch (e) {
-      console.error(e);
-      alert('Transaction cancelled or failed');
+    if (!address) {
+      alert('Please connect your wallet first!');
+      return handleConnect();
     }
+    
+    // For now, show a message. In production, replace with your project's TON wallet address.
+    alert(`To deposit ${depositAmount} TON, please send it to your in-game wallet. TonConnect integration requires a valid receiving address configured by the admin.`);
   };
 
   const handleWithdraw = () => {
     if (!withdrawAmount || Number(withdrawAmount) <= 0) return alert('Enter a valid withdraw amount');
-    if (!address) return alert('Please connect your wallet first!');
-    alert('Withdrawal request submitted! Pending admin approval.');
+    if (!address) {
+      alert('Please connect your wallet first!');
+      return handleConnect();
+    }
+    alert(`Withdrawal of ${withdrawAmount} TON to ${friendlyAddress?.slice(0,8)}...${friendlyAddress?.slice(-6)} submitted! Pending admin approval.`);
   };
 
+  const shortAddr = friendlyAddress 
+    ? `${friendlyAddress.slice(0, 6)}...${friendlyAddress.slice(-4)}` 
+    : null;
+
   return (
-    <div className="wallet-modal mt-md text-center">
-      <div className="mb-md">
-        <TonConnectButton style={{ margin: '0 auto' }} />
+    <div className="wallet-modal mt-md">
+      {/* Connection Status */}
+      <div className="card mb-md text-center">
+        {address ? (
+          <>
+            <div style={{ fontSize: '0.75rem', color: 'var(--neon-green)', marginBottom: '4px' }}>● Connected</div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', fontFamily: 'monospace' }}>{shortAddr}</div>
+            <button className="btn btn-outline btn-sm" onClick={handleDisconnect}>Disconnect</button>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>No wallet connected</div>
+            <button className="btn btn-primary btn-full" onClick={handleConnect}>Connect TON Wallet</button>
+          </>
+        )}
+      </div>
+
+      {/* Balance */}
+      <div className="card mb-md text-center" style={{ background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>In-Game Balance</div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--neon-green)', fontFamily: 'var(--font-display)' }}>
+          {formatNumberFull(availableVotes)} Votes
+        </div>
       </div>
       
+      {/* Deposit */}
       <div className="card mb-md">
         <h3 className="mb-sm">Deposit TON</h3>
         <input 
@@ -163,6 +197,7 @@ function WalletModalContent() {
         <button className="btn btn-primary btn-full mt-sm" onClick={handleDeposit}>Deposit</button>
       </div>
 
+      {/* Withdraw */}
       <div className="card">
         <h3 className="mb-sm">Withdraw TON</h3>
         <input 
@@ -183,29 +218,38 @@ function WalletModalContent() {
 function SpinModalContent() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [wonPrize, setWonPrize] = useState(null);
   
   const segments = useGameStore(s => s.spinSegments) || [];
+  const segCount = segments.length;
 
   const handleSpin = () => {
-    if (spinning || segments.length === 0) return;
+    if (spinning || segCount === 0) return;
     setSpinning(true);
-    const target = Math.floor(Math.random() * segments.length);
-    const spins = 5; 
-    
-    // Calculate the angle for each segment
-    const segmentAngle = 360 / segments.length;
-    // Add a random offset within the segment so it doesn't land on the edge
-    const randomOffset = Math.floor(Math.random() * (segmentAngle * 0.8)) + (segmentAngle * 0.1); 
-    // The target angle (pointer is at the top, so we need to rotate so the target segment is at the top)
-    const targetRotation = (spins * 360) + (360 - (target * segmentAngle)) - randomOffset;
-    
-    setRotation(rotation + targetRotation);
+    setWonPrize(null);
+
+    // Pick a random target segment
+    const target = Math.floor(Math.random() * segCount);
+    const segmentAngle = 360 / segCount;
+
+    // Random position within the segment (10%-90% to avoid edges)
+    const offsetInSegment = segmentAngle * 0.1 + Math.random() * segmentAngle * 0.8;
+
+    // The wheel rotates clockwise. Segment 0 starts at the top (12 o'clock).
+    // To land the pointer (fixed at top) on segment `target`, we rotate the wheel
+    // so that segment's center area aligns with 0°.
+    // Segment `target` starts at angle (target * segmentAngle) from the top.
+    // We need to rotate past that start + offsetInSegment.
+    const fullSpins = 5 * 360; // 5 full rotations for drama
+    const targetAngle = fullSpins + (target * segmentAngle) + offsetInSegment;
+
+    setRotation(prev => prev + targetAngle);
 
     setTimeout(() => {
       setSpinning(false);
-      telegram.haptic.notification('success');
       const reward = segments[target];
-      alert(`You won ${reward.label}!`);
+      setWonPrize(reward);
+      telegram.haptic.notification('success');
       
       // Apply reward locally
       if (reward.type === 'energy') {
@@ -219,70 +263,90 @@ function SpinModalContent() {
       } else if (reward.type === 'regen') {
         useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
       } else if (reward.type === 'ton') {
-        alert('0.1 TON added to your pending wallet balance!');
+        // TON reward handled by alert below
       }
 
       // Save to database
       api.spin('save_reward', reward).catch(e => console.error('Failed to save spin reward', e));
-
     }, 4000);
   };
 
-  if (!segments || segments.length === 0) return <div>Loading...</div>;
+  if (!segments || segCount === 0) return <div>Loading spin config...</div>;
+
+  const segmentAngle = 360 / segCount;
 
   return (
     <div className="spin-modal text-center">
       <div className="spin-container mb-xl" style={{ marginTop: '20px' }}>
         <div className="spin-wheel-wrapper">
-          <div className="spin-pointer" style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', width: '20px', height: '30px', background: 'var(--energy-red)', clipPath: 'polygon(50% 100%, 0 0, 100% 0)', zIndex: 10 }} />
+          {/* Pointer at top center */}
+          <div style={{
+            position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: '12px solid transparent', borderRight: '12px solid transparent',
+            borderTop: '28px solid #ff2255',
+            zIndex: 10, filter: 'drop-shadow(0 2px 4px rgba(255,0,0,0.5))'
+          }} />
           <div 
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(${segments.map((s, i) => `${s.color} ${i * (100 / segments.length)}% ${(i + 1) * (100 / segments.length)}%`).join(', ')})`
+              background: `conic-gradient(from -90deg, ${segments.map((s, i) =>
+                `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`
+              ).join(', ')})`
             }}
           >
             {segments.map((segment, index) => {
-              const rotationAngle = (index * (360 / segments.length)) + (180 / segments.length);
+              // Place label at the center angle of each segment
+              const centerAngle = index * segmentAngle + segmentAngle / 2;
               return (
                 <div 
                   key={index} 
                   style={{ 
                     position: 'absolute', 
-                    top: '0', 
-                    left: '50%', 
-                    width: '60px',
-                    marginLeft: '-30px', // Center width
-                    transformOrigin: '50% 150px',
-                    transform: `rotate(${rotationAngle}deg)`,
-                    height: '150px',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'center',
-                    paddingTop: '25px',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    fontSize: '0.85rem',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
-                    zIndex: 2
+                    top: '50%', 
+                    left: '50%',
+                    width: '120px',
+                    height: '1px',
+                    transformOrigin: '0% 50%',
+                    transform: `rotate(${centerAngle - 90}deg)`, // -90 because CSS 0deg is east, we want north
+                    zIndex: 2,
+                    pointerEvents: 'none'
                   }}
                 >
-                  <span style={{ 
-                    display: 'inline-block',
-                    transform: 'rotate(-90deg)', // keep it upright-ish depending on slice
+                  <span style={{
+                    position: 'absolute',
+                    left: '30px', // offset from center towards edge
+                    top: '-10px',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontSize: '0.65rem',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
                     whiteSpace: 'nowrap'
                   }}>
                     {segment.label}
                   </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       </div>
+      
+      {wonPrize && (
+        <div style={{ 
+          padding: '12px', borderRadius: '12px', marginBottom: '16px',
+          background: 'rgba(0,255,136,0.15)', border: '1px solid var(--neon-green)',
+          fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--neon-green)'
+        }}>
+          🎉 You won: {wonPrize.label}
+        </div>
+      )}
+      
       <button className="btn btn-gold btn-lg mt-lg btn-full" onClick={handleSpin} disabled={spinning}>
         {spinning ? 'SPINNING...' : 'SPIN NOW'}
       </button>
     </div>
   );
 }
+

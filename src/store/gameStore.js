@@ -18,16 +18,18 @@ export const useGameStore = create((set, get) => ({
   energyRegenRateMs: 1000,
   energyRegenAmount: 1,
   energyRegenInterval: null,
+  configBaseXp: 1000,
+  spinSegments: null,
 
   async loadConfig() {
     try {
       const { config, nations } = await api.get('/config');
+      // Only set config-level defaults. DO NOT overwrite energy/miningSpeed/maxEnergy
+      // because setGameState sets them from the user's actual DB values.
       set({
         nations: nations || [],
         energyRegenRateMs: config.energy_regen_rate_ms || 1000,
         energyRegenAmount: config.energy_regen_amount || 1,
-        maxEnergy: config.max_energy_base || 1000,
-        miningSpeed: config.base_mining_speed || 1,
         configBaseXp: config.base_xp_req || 1000,
         spinSegments: config.spin_segments_json || null,
         configLoaded: true
@@ -45,8 +47,6 @@ export const useGameStore = create((set, get) => ({
     const state = get();
     if (state.energy < touchCount) return { success: false, votes: 0 };
 
-    // 1 tap = 1 vote * miningSpeed * nationMultiplier (calculated later or handled backend)
-    // For simplicity, miningSpeed already includes multipliers calculated on backend
     const votesEarned = state.miningSpeed * touchCount;
 
     set({
@@ -83,7 +83,6 @@ export const useGameStore = create((set, get) => ({
       });
     } catch (err) {
       console.error('[Game] Sync failed:', err);
-      // Re-add pending taps on failure
       set((s) => ({ pendingTaps: s.pendingTaps + tapsToSync, isSyncing: false }));
     }
   },
@@ -104,7 +103,7 @@ export const useGameStore = create((set, get) => ({
     set({ energyRegenInterval: null });
   },
 
-  // ── Set state from server ─────────────────────────
+  // ── Set state from server (called after auth) ────
   setGameState(data) {
     set({
       totalVotes: data.total_votes ?? 0,

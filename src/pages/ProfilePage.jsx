@@ -69,12 +69,16 @@ export default function ProfilePage() {
               <div className="profile-stat-label">Total Taps</div>
             </div>
             <div className="profile-stat">
+              <div className="profile-stat-value" style={{ color: 'var(--neon-green)' }}>{formatNumber(useGameStore.getState().availableVotes)}</div>
+              <div className="profile-stat-label">Balance</div>
+            </div>
+            <div className="profile-stat">
               <div className="profile-stat-value">{friendCount || 0}</div>
               <div className="profile-stat-label">Friends</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-value">0</div>
-              <div className="profile-stat-label">NFTs</div>
+              <div className="profile-stat-value">{useGameStore.getState().miningSpeed}</div>
+              <div className="profile-stat-label">Speed</div>
             </div>
           </div>
 

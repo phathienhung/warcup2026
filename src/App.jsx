@@ -75,7 +75,7 @@ function NationSelectionScreen({ onSelect }) {
 
 export default function App() {
   const { isLoading, isAuthenticated, authenticate, favoriteNation, selectNation } = useUserStore();
-  const { setGameState, startEnergyRegen, loadConfig } = useGameStore();
+  const { setGameState, startEnergyRegen, stopEnergyRegen, loadConfig } = useGameStore();
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
@@ -84,13 +84,16 @@ export default function App() {
 
   async function initApp() {
     try {
-      // Load config first (non-blocking if fails)
-      loadConfig().catch(() => {});
+      // Load config first (regen rates, spin segments, etc.)
+      await loadConfig().catch(() => {});
       
+      // Then authenticate — setGameState overwrites energy/miningSpeed with real DB values
       const data = await authenticate();
       if (data?.user) {
         setGameState(data.user);
       }
+      // Start regen AFTER setGameState so it uses the correct energy value
+      stopEnergyRegen();
       startEnergyRegen();
     } catch (err) {
       console.error('[App] Init failed:', err);
