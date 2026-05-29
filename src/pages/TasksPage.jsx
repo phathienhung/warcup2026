@@ -21,22 +21,22 @@ export default function TasksPage() {
   const isAchievementMet = useCallback((id) => {
     if (!user) return false;
     switch (id) {
-      case 'first_tap': return user.totalTaps > 0;
-      case 'tap_1k': return user.totalTaps >= 1000;
-      case 'tap_10k': return user.totalTaps >= 10000;
-      case 'tap_100k': return user.totalTaps >= 100000;
-      case 'tap_1m': return user.totalTaps >= 1000000;
-      case 'friends_5': return user.friendCount >= 5;
-      case 'friends_20': return user.friendCount >= 20;
-      case 'predict_win_3': return user.predictionsWon >= 3;
-      case 'predict_win_10': return user.predictionsWon >= 10;
-      case 'nft_5': return user.nftCount >= 5;
-      case 'streak_7': return user.loginStreak >= 7;
-      case 'streak_30': return user.loginStreak >= 30;
+      case 'first_tap': return user.total_taps > 0;
+      case 'tap_1k': return user.total_taps >= 1000;
+      case 'tap_10k': return user.total_taps >= 10000;
+      case 'tap_100k': return user.total_taps >= 100000;
+      case 'tap_1m': return user.total_taps >= 1000000;
+      case 'friends_5': return user.friend_count >= 5;
+      case 'friends_20': return user.friend_count >= 20;
+      case 'predict_win_3': return user.predictions_won >= 3;
+      case 'predict_win_10': return user.predictions_won >= 10;
+      case 'nft_5': return user.nft_count >= 5;
+      case 'streak_7': return user.login_streak >= 7;
+      case 'streak_30': return user.login_streak >= 30;
       case 'level_10': return user.level >= 10;
       case 'level_50': return user.level >= 50;
-      case 'clan_join': return user.clanId != null;
-      case 'founder': return user.founderBadge === true;
+      case 'clan_join': return user.clan_id != null;
+      case 'founder': return user.founder_badge === true;
       default: return false;
     }
   }, [user]);
