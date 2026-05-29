@@ -9,6 +9,7 @@ export default function NavBar() {
     { id: '/', label: 'Mine', icon: '⚽' },
     { id: '/prediction', label: 'Predict', icon: '🔮' },
     { id: '/shop', label: 'Shop', icon: '🛒' },
+    { id: '/wallet', label: 'Wallet', icon: '💳' },
     { id: '/tasks', label: 'Tasks', icon: '✅', hasBadge: true },
     { id: '/profile', label: 'Profile', icon: '👤' },
   ];

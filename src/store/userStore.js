@@ -66,7 +66,8 @@ export const useUserStore = create((set, get) => ({
         predictionsTotal: data.user.predictions_total || 0,
         totalTaps: data.user.total_taps || 0,
       });
-      set({ xpToNextLevel: get().getXpForLevel(data.user.level || 1) });
+      const currentLevel = data.user.level || 1;
+      set({ xpToNextLevel: get().getXpForLevel(currentLevel + 1) });
       return data;
     } catch (err) {
       console.error('[User] Auth failed:', err);
@@ -101,26 +102,25 @@ export const useUserStore = create((set, get) => ({
 
   // ── Level System ──────────────────────────────────
   getXpForLevel(level) {
+    // Returns total XP required to REACH this level from 0
     const baseXp = useGameStore.getState().configBaseXp || 1000;
-    return Math.floor(baseXp * Math.pow(2, level - 1));
+    if (level <= 1) return 0;
+    return baseXp * (Math.pow(2, level - 1) - 1);
   },
 
   addXp(amount) {
     const state = get();
-    let newXp = state.xp + amount;
-    let newLevel = state.level;
-    let xpNeeded = state.getXpForLevel(newLevel);
-
-    while (newXp >= xpNeeded) {
-      newXp -= xpNeeded;
-      newLevel++;
-      xpNeeded = state.getXpForLevel(newLevel);
-    }
+    const newTotalXp = state.xp + amount;
+    
+    // Find new level
+    const baseXp = useGameStore.getState().configBaseXp || 1000;
+    const newLevel = Math.floor(Math.log2((newTotalXp / baseXp) + 1)) + 1;
+    const xpNeededForNext = state.getXpForLevel(newLevel + 1);
 
     set({
-      xp: newXp,
+      xp: newTotalXp,
       level: newLevel,
-      xpToNextLevel: xpNeeded,
+      xpToNextLevel: xpNeededForNext,
     });
   },
 

@@ -1,5 +1,6 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
+import { computeSpeed, computeLevelFromXp } from '../_lib/gameLogic.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -30,12 +31,15 @@ export default async function handler(req, res) {
 
       if (!dbUser) return res.status(404).json({ error: 'User not found' });
 
-      // 2. Calculate
-      // For simplicity, assuming mining_speed is passed or retrieved (using 1 here as default if not fetching full profile)
-      // In production, we'd fetch full speed including NFT bonuses
-      const speed = 1; 
+      // Get friend count for speed calc
+      const { count: friendCount } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', user.id);
+
+      const speed = computeSpeed(dbUser, friendCount || 0);
       
-      const energyCost = count;
+      const energyCost = count * speed;
       if (dbUser.energy < energyCost) {
         return res.status(400).json({ error: 'Not enough energy', energy: dbUser.energy });
       }
@@ -49,8 +53,7 @@ export default async function handler(req, res) {
       const newTotalTaps = Number(dbUser.total_taps) + count;
       const newXp = Number(dbUser.xp) + xpGained;
       
-      // Simple leveling formula
-      const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+      const newLevel = computeLevelFromXp(newXp);
 
       // 3. Update DB
       const { error } = await supabase

@@ -11,52 +11,75 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Get transaction history
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('wallet_transactions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-        
+
+      if (error) throw error;
       return res.status(200).json(data || []);
     } catch (err) {
-      return res.status(500).json({ error: 'Failed to fetch transactions' });
+      console.error(err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 
   if (req.method === 'POST') {
-    const { action, amount, txHash } = req.body;
-    
-    if (action === 'deposit') {
-      if (!amount || !txHash) return res.status(400).json({ error: 'Missing parameters' });
-      // Insert pending deposit record
-      // Real app would verify txHash on TON blockchain here
-      const { error } = await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        tx_type: 'deposit',
-        amount_ton: amount,
-        tx_hash: txHash,
-        status: 'pending' // Or 'completed' if verified
-      });
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ success: true });
-    }
+    const { action, amount } = req.body;
 
     if (action === 'withdraw') {
-      if (!amount) return res.status(400).json({ error: 'Missing amount' });
-      // Insert pending withdraw request
-      const { error } = await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        tx_type: 'withdraw',
-        amount_ton: amount,
-        tx_hash: `withdraw_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-        status: 'pending'
-      });
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ success: true });
-    }
-    
-    return res.status(400).json({ error: 'Invalid action' });
-  }
+      try {
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('ton_balance')
+          .eq('telegram_id', user.id)
+          .single();
 
-  return res.status(405).json({ error: 'Method not allowed' });
+        if (!dbUser || dbUser.ton_balance < amount) {
+          return res.status(400).json({ error: 'Insufficient balance' });
+        }
+
+        // Deduct balance and create pending transaction
+        await supabase
+          .from('users')
+          .update({ ton_balance: dbUser.ton_balance - amount })
+          .eq('telegram_id', user.id);
+
+        await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: user.id,
+            tx_type: 'withdraw',
+            amount_ton: amount,
+            status: 'pending'
+          });
+
+        return res.status(200).json({ success: true, newBalance: dbUser.ton_balance - amount });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+
+    if (action === 'deposit') {
+      try {
+        // Normally, deposit would be handled via a webhook from TON blockchain.
+        // For simulation/MVP, we just record a pending deposit.
+        await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: user.id,
+            tx_type: 'deposit',
+            amount_ton: amount,
+            status: 'pending'
+          });
+
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  }
 }

@@ -9,6 +9,7 @@ import TasksPage from './pages/TasksPage';
 import ShopPage from './pages/ShopPage';
 import ProfilePage from './pages/ProfilePage';
 import PredictionPage from './pages/PredictionPage';
+import WalletPage from './pages/WalletPage';
 
 function LoadingScreen() {
   return (
@@ -120,6 +121,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/prediction" element={<PredictionPage />} />
         <Route path="/shop" element={<ShopPage />} />
+        <Route path="/wallet" element={<WalletPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>

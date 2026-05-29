@@ -159,6 +159,19 @@ class ApiClient {
     return this.get('/referral?action=friends');
   }
 
+  // ── Wallet ────────────────────────────────────────
+  getWalletHistory() {
+    return this.get('/wallet');
+  }
+
+  withdrawWallet(amount) {
+    return this.post('/wallet', { action: 'withdraw', amount });
+  }
+
+  depositWallet(amount) {
+    return this.post('/wallet', { action: 'deposit', amount });
+  }
+
   // ── Spin ──────────────────────────────────────────
   spin(action = 'spin', reward = null) {
     return this.post('/spin', { action, reward });

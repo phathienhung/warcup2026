@@ -45,10 +45,6 @@ export default function HomePage() {
           style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--neon-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-green)' }}
         >🏆</button>
         <button 
-          onClick={() => setActiveModal('wallet')}
-          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--neon-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-blue)' }}
-        >💳</button>
-        <button 
           onClick={() => setActiveModal('spin')}
           style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-gold)' }}
         >🎡</button>
@@ -69,13 +65,8 @@ export default function HomePage() {
 
       <ParticleEngine particles={particles} setParticles={setParticles} />
 
-      {/* Modals */}
       <Modal isOpen={activeModal === 'rank'} onClose={() => setActiveModal(null)} title="Leaderboard">
         <RankModalContent />
-      </Modal>
-
-      <Modal isOpen={activeModal === 'wallet'} onClose={() => setActiveModal(null)} title="TON Wallet">
-        <WalletModalContent />
       </Modal>
 
       <Modal isOpen={activeModal === 'spin'} onClose={() => setActiveModal(null)} title="Lucky Spin">
@@ -104,123 +95,6 @@ function RankModalContent() {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ── Wallet Modal ────────────────────────────────────
-function WalletModalContent() {
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [tonConnectUI] = useTonConnectUI();
-  const address = useTonAddress(false); // raw address
-  const friendlyAddress = useTonAddress(); // user-friendly
-  const { totalVotes, availableVotes } = useGameStore();
-  
-  const handleConnect = async () => {
-    try {
-      await tonConnectUI.openModal();
-    } catch (e) {
-      console.error('TonConnect modal error:', e);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      await tonConnectUI.disconnect();
-    } catch (e) {
-      console.error('Disconnect error:', e);
-    }
-  };
-
-  const handleDeposit = async () => {
-    if (!depositAmount || Number(depositAmount) <= 0) return alert('Enter a valid amount');
-    if (!address) {
-      alert('Please connect your wallet first!');
-      return handleConnect();
-    }
-    
-    // For now, show a message. In production, replace with your project's TON wallet address.
-    const inGameWallet = import.meta.env.VITE_IN_GAME_WALLET || 'UQANRLrMrxdOpOidj71SCe9Bgx6cNX6CcMEygRpxmkvEMt2K';
-    alert(`To deposit ${depositAmount} TON, please send it to your in-game wallet: ${inGameWallet}. TonConnect integration requires a valid receiving address configured by the admin.`);
-  };
-
-  const handleWithdraw = () => {
-    if (!withdrawAmount || Number(withdrawAmount) <= 0) return alert('Enter a valid withdraw amount');
-    if (!address) {
-      alert('Please connect your wallet first!');
-      return handleConnect();
-    }
-    alert(`Withdrawal of ${withdrawAmount} TON to ${friendlyAddress?.slice(0,8)}...${friendlyAddress?.slice(-6)} submitted! Pending admin approval.`);
-  };
-
-  const shortAddr = friendlyAddress 
-    ? `${friendlyAddress.slice(0, 6)}...${friendlyAddress.slice(-4)}` 
-    : null;
-
-  return (
-    <div className="wallet-modal mt-md">
-      {/* Connection Status */}
-      <div className="card mb-md text-center">
-        {address ? (
-          <>
-            <div style={{ fontSize: '0.75rem', color: 'var(--neon-green)', marginBottom: '4px' }}>● Connected</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', fontFamily: 'monospace' }}>{shortAddr}</div>
-            <button className="btn btn-outline btn-sm" onClick={handleDisconnect}>Disconnect</button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>No wallet connected</div>
-            <button className="btn btn-primary btn-full" onClick={handleConnect}>Connect TON Wallet</button>
-          </>
-        )}
-      </div>
-
-      {/* Balance */}
-      <div className="card mb-md text-center" style={{ background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Votes Balance</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--neon-green)', fontFamily: 'var(--font-display)' }}>
-              {formatNumberFull(availableVotes)}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>TON Balance</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00d4ff', fontFamily: 'var(--font-display)' }}>
-              {useGameStore.getState().tonBalance || 0}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Deposit */}
-      <div className="card mb-md">
-        <h3 className="mb-sm">Deposit TON</h3>
-        <input 
-          type="number" 
-          placeholder="Amount (TON)" 
-          className="input mb-sm" 
-          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
-          value={depositAmount}
-          onChange={(e) => setDepositAmount(e.target.value)}
-        />
-        <button className="btn btn-primary btn-full mt-sm" onClick={handleDeposit}>Deposit</button>
-      </div>
-
-      {/* Withdraw */}
-      <div className="card">
-        <h3 className="mb-sm">Withdraw TON</h3>
-        <input 
-          type="number" 
-          placeholder="Amount (TON)" 
-          className="input mb-sm" 
-          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
-          value={withdrawAmount}
-          onChange={(e) => setWithdrawAmount(e.target.value)}
-        />
-        <button className="btn btn-outline btn-full mt-sm" onClick={handleWithdraw}>Request Withdrawal</button>
-      </div>
     </div>
   );
 }
@@ -327,12 +201,13 @@ function SpinModalContent() {
                 >
                   <span style={{
                     position: 'absolute',
-                    left: 'calc(50% + 15px)', // offset from center towards edge. Wheel is 300px, radius 150px. Center of segment is at about 75px. 50% of 120px is 60px.
+                    left: '75px', // Exact middle point of the 150px radius
                     top: '50%',
-                    transform: 'translateY(-50%)',
+                    transform: 'translate(-50%, -50%)', // Center the text perfectly on that point
                     color: '#fff',
                     fontWeight: 'bold',
-                    fontSize: '0.65rem',
+                    fontSize: '0.7rem',
+                    textAlign: 'center',
                     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
                     whiteSpace: 'nowrap'
                   }}>

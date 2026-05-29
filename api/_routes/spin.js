@@ -1,5 +1,6 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
+import { computeLevelFromXp } from '../_lib/gameLogic.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -33,8 +34,7 @@ export default async function handler(req, res) {
           updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + reward.reward;
         } else if (reward.type === 'xp') {
           updates.xp = (dbUser.xp || 0) + reward.reward;
-          // Simple level up logic
-          const newLevel = Math.floor(Math.sqrt(updates.xp / 100)) + 1;
+          const newLevel = computeLevelFromXp(updates.xp);
           if (newLevel > (dbUser.level || 1)) updates.level = newLevel;
         }
 
