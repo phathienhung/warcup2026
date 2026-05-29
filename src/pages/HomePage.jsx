@@ -36,26 +36,34 @@ export default function HomePage() {
   };
 
   return (
-    <div className="page" style={{ overflow: 'hidden' }}>
-      <div className="game-hud">
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-          <MiningSpeed speed={miningSpeed} />
-          
-          <div className="top-actions" style={{ display: 'flex', gap: '8px' }}>
-            <button className="icon-btn" onClick={() => setActiveModal('rank')}>🏆 Rank</button>
-            <button className="icon-btn" onClick={() => setActiveModal('wallet')}>💳 Wallet</button>
-            <button className="icon-btn" onClick={() => setActiveModal('spin')}>🎡 Spin</button>
-          </div>
-        </div>
-        
-        <VoteCounter value={totalVotes} />
+    <div className="page" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+      
+      {/* Left Sidebar for circular action buttons */}
+      <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 10 }}>
+        <button 
+          onClick={() => setActiveModal('rank')}
+          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--neon-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-green)' }}
+        >🏆</button>
+        <button 
+          onClick={() => setActiveModal('wallet')}
+          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--neon-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-blue)' }}
+        >💳</button>
+        <button 
+          onClick={() => setActiveModal('spin')}
+          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-gold)' }}
+        >🎡</button>
       </div>
 
-      <div className="game-center">
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
+        <MiningSpeed speed={miningSpeed} />
+      </div>
+      
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px', zIndex: 5 }}>
+        <VoteCounter value={totalVotes} />
         <TapBall onTap={handleTap} />
       </div>
 
-      <div className="game-footer">
+      <div style={{ padding: '24px 0', width: '100%', zIndex: 5 }}>
         <EnergyBar current={energy} max={maxEnergy} />
       </div>
 
@@ -121,10 +129,11 @@ function WalletModalContent() {
           type="number" 
           placeholder="Amount (TON)" 
           className="input mb-sm" 
+          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%' }}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <button className="btn btn-primary btn-full" onClick={handleDeposit}>Deposit</button>
+        <button className="btn btn-primary btn-full mt-sm" onClick={handleDeposit}>Deposit</button>
       </div>
 
       <div className="card">
@@ -159,7 +168,7 @@ function SpinModalContent() {
     <div className="spin-modal text-center">
       <div className="spin-container mb-xl" style={{ marginTop: '20px' }}>
         <div className="spin-wheel-wrapper">
-          <div className="spin-pointer" />
+          <div className="spin-pointer" style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', width: '20px', height: '30px', background: 'var(--energy-red)', clipPath: 'polygon(50% 100%, 0 0, 100% 0)', zIndex: 10 }} />
           <div 
             className="spin-wheel"
             style={{ 
