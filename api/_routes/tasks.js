@@ -36,10 +36,15 @@ export default async function handler(req, res) {
         };
       });
 
-      return res.status(200).json(merged);
+      // Get claimed achievements
+      const claimedAchievements = (userTasks || [])
+        .filter(ut => ut.task_id.startsWith('ach_') && ut.status === 'claimed')
+        .map(ut => ut.task_id.replace('ach_', ''));
+
+      return res.status(200).json({ tasks: merged, claimedAchievements });
     } catch (e) {
       console.error('Tasks GET error:', e);
-      return res.status(200).json([]); // Graceful fallback
+      return res.status(200).json({ tasks: [], claimedAchievements: [] });
     }
   }
 
@@ -163,6 +168,54 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, rewardType: task.reward_type, rewardValue: task.reward_value });
       } catch (e) {
         console.error('Claim task error:', e);
+        return res.status(500).json({ error: 'Server error' });
+      }
+    }
+
+    if (action === 'claim_achievement' && taskId) {
+      try {
+        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+        const { data: existing } = await supabase.from('user_tasks').select('*').eq('user_id', user.id).eq('task_id', `ach_${taskId}`).single();
+        if (existing && existing.status === 'claimed') {
+          return res.status(400).json({ error: 'Already claimed' });
+        }
+
+        // Validate condition
+        let isValid = false;
+        let rewardVotes = 0;
+        
+        const check = (id, condition, reward) => { if (taskId === id && condition) { isValid = true; rewardVotes = reward; } };
+        
+        check('first_tap', dbUser.total_taps > 0, 100);
+        check('tap_1k', dbUser.total_taps >= 1000, 500);
+        check('tap_10k', dbUser.total_taps >= 10000, 2000);
+        check('tap_100k', dbUser.total_taps >= 100000, 10000);
+        check('tap_1m', dbUser.total_taps >= 1000000, 50000);
+        check('friends_5', dbUser.friend_count >= 5, 2000);
+        check('friends_20', dbUser.friend_count >= 20, 10000);
+        // Note: predict_win logic requires predictions table, simplifying for now
+        check('predict_win_3', dbUser.predictions_won >= 3, 5000);
+        check('predict_win_10', dbUser.predictions_won >= 10, 25000);
+        check('nft_5', dbUser.nft_count >= 5, 3000);
+        check('streak_7', dbUser.login_streak >= 7, 2000);
+        check('streak_30', dbUser.login_streak >= 30, 15000);
+        check('level_10', dbUser.level >= 10, 5000);
+        check('level_50', dbUser.level >= 50, 50000);
+        check('clan_join', dbUser.clan_id != null, 500);
+        check('founder', dbUser.founder_badge === true, 10000);
+
+        if (!isValid) return res.status(400).json({ error: 'Achievement condition not met' });
+
+        // Update DB
+        const newVotes = (dbUser.total_votes || 0) + rewardVotes;
+        const newAvail = (dbUser.available_votes || 0) + rewardVotes;
+        
+        await supabase.from('users').update({ total_votes: newVotes, available_votes: newAvail }).eq('telegram_id', user.id);
+        await supabase.from('user_tasks').upsert({ user_id: user.id, task_id: `ach_${taskId}`, status: 'claimed', completed: true, completed_at: new Date().toISOString() }, { onConflict: 'user_id,task_id,reset_date' });
+        
+        return res.status(200).json({ success: true, rewardVotes });
+      } catch (e) {
+        console.error('Claim achievement error:', e);
         return res.status(500).json({ error: 'Server error' });
       }
     }

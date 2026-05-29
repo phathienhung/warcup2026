@@ -12,9 +12,34 @@ export default function TasksPage() {
   const user = useUserStore(s => s.user);
   
   const [tasks, setTasks] = useState([]);
+  const [claimedAchievements, setClaimedAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [claimingStreak, setClaimingStreak] = useState(false);
   const [processingTask, setProcessingTask] = useState(null);
+
+  // Check if an achievement is met based on user stats
+  const isAchievementMet = useCallback((id) => {
+    if (!user) return false;
+    switch (id) {
+      case 'first_tap': return user.totalTaps > 0;
+      case 'tap_1k': return user.totalTaps >= 1000;
+      case 'tap_10k': return user.totalTaps >= 10000;
+      case 'tap_100k': return user.totalTaps >= 100000;
+      case 'tap_1m': return user.totalTaps >= 1000000;
+      case 'friends_5': return user.friendCount >= 5;
+      case 'friends_20': return user.friendCount >= 20;
+      case 'predict_win_3': return user.predictionsWon >= 3;
+      case 'predict_win_10': return user.predictionsWon >= 10;
+      case 'nft_5': return user.nftCount >= 5;
+      case 'streak_7': return user.loginStreak >= 7;
+      case 'streak_30': return user.loginStreak >= 30;
+      case 'level_10': return user.level >= 10;
+      case 'level_50': return user.level >= 50;
+      case 'clan_join': return user.clanId != null;
+      case 'founder': return user.founderBadge === true;
+      default: return false;
+    }
+  }, [user]);
 
   // Fetch tasks from API on mount
   useEffect(() => {
@@ -22,8 +47,13 @@ export default function TasksPage() {
     async function fetchTasks() {
       try {
         const data = await api.getTasks();
-        if (!cancelled && Array.isArray(data)) {
-          setTasks(data);
+        if (!cancelled && data) {
+          if (Array.isArray(data)) {
+            setTasks(data); // Fallback if backend hasn't been updated
+          } else {
+            setTasks(data.tasks || []);
+            setClaimedAchievements(data.claimedAchievements || []);
+          }
         }
       } catch (e) {
         console.error('Failed to load tasks', e);
@@ -51,6 +81,8 @@ export default function TasksPage() {
         useUserStore.setState(s => ({ 
           user: { ...s.user, last_streak_claim: today } 
         }));
+        // Refresh full user stats to update UI instantly
+        useUserStore.getState().authenticate();
         alert(`Streak Claimed! +${res.rewardValue} ${res.rewardType}`);
       }
     } catch (e) {
@@ -86,8 +118,30 @@ export default function TasksPage() {
         if (res.success) {
           telegram.haptic.notification('success');
           setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'claimed' } : t));
+          // Refresh user stats instantly
+          useUserStore.getState().authenticate();
           alert(`Task Claimed! +${res.rewardValue} ${res.rewardType}`);
         }
+      }
+    } catch (e) {
+      const msg = e?.message || 'Action failed';
+      alert(msg);
+    } finally {
+      setProcessingTask(null);
+    }
+  };
+
+  const handleClaimAchievement = async (achievement) => {
+    if (processingTask) return;
+    setProcessingTask(achievement.id);
+    
+    try {
+      const res = await api.claimAchievement(achievement.id);
+      if (res.success) {
+        telegram.haptic.notification('success');
+        setClaimedAchievements(prev => [...prev, achievement.id]);
+        useUserStore.getState().authenticate();
+        alert(`Achievement Claimed! +${res.rewardVotes} Votes`);
       }
     } catch (e) {
       const msg = e?.message || 'Action failed';
@@ -189,14 +243,33 @@ export default function TasksPage() {
 
       {activeTab === 'achievements' && (
         <div className="grid-2">
-          {(achievements || []).map((achievement, i) => (
-            <div key={achievement.id || i} className={`card ${i === 0 ? 'card-gold' : ''}`} style={{ opacity: i === 0 ? 1 : 0.5, textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{achievement.icon || '🏆'}</div>
-              <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{achievement.title}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{achievement.description}</div>
-              <div className="badge badge-gold">+{formatNumber(achievement.reward_votes || achievement.rewardVotes || 0)}</div>
-            </div>
-          ))}
+          {(achievements || []).map((achievement, i) => {
+            const isClaimed = claimedAchievements.includes(achievement.id);
+            const isMet = isAchievementMet(achievement.id);
+            
+            return (
+              <div key={achievement.id || i} className={`card ${isClaimed ? '' : (isMet ? 'card-gold' : '')}`} style={{ opacity: isClaimed ? 0.5 : 1, textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{achievement.icon || '🏆'}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{achievement.title}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px', flexGrow: 1 }}>{achievement.description}</div>
+                
+                {isClaimed ? (
+                  <div className="badge" style={{ alignSelf: 'center', background: '#333' }}>Claimed</div>
+                ) : isMet ? (
+                  <button 
+                    className="btn btn-primary btn-sm" 
+                    style={{ alignSelf: 'center', marginTop: '8px' }}
+                    onClick={() => handleClaimAchievement(achievement)}
+                    disabled={processingTask === achievement.id}
+                  >
+                    {processingTask === achievement.id ? '...' : `Claim +${formatNumber(achievement.rewardVotes || achievement.reward_votes)}`}
+                  </button>
+                ) : (
+                  <div className="badge badge-gold" style={{ alignSelf: 'center' }}>+{formatNumber(achievement.rewardVotes || achievement.reward_votes)}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

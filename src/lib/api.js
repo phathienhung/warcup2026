@@ -89,6 +89,9 @@ class ApiClient {
   async claimStreak() {
     return this.post('/tasks', { action: 'claim_streak' });
   }
+  async claimAchievement(achievementId) {
+    return this.post('/tasks', { action: 'claim_achievement', taskId: achievementId });
+  }
 
   // ── Leaderboard ───────────────────────────────────
   getLeaderboard(type = 'global', limit = 100) {
