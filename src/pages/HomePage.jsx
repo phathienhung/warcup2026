@@ -110,12 +110,13 @@ function RankModalContent() {
 
 // ── Wallet Modal ────────────────────────────────────
 function WalletModalContent() {
-  const [amount, setAmount] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [tonConnectUI] = useTonConnectUI();
   const address = useTonAddress();
   
   const handleDeposit = async () => {
-    if (!amount || Number(amount) <= 0) return alert('Enter a valid amount');
+    if (!depositAmount || Number(depositAmount) <= 0) return alert('Enter a valid amount');
     if (!address) return alert('Please connect your wallet first!');
     
     const transaction = {
@@ -123,7 +124,7 @@ function WalletModalContent() {
       messages: [
         {
           address: "EQB_Your_Backend_Wallet_Address_Here",
-          amount: (Number(amount) * 1e9).toString() // in nanoTON
+          amount: (Number(depositAmount) * 1e9).toString() // in nanoTON
         }
       ]
     };
@@ -135,6 +136,12 @@ function WalletModalContent() {
       console.error(e);
       alert('Transaction cancelled or failed');
     }
+  };
+
+  const handleWithdraw = () => {
+    if (!withdrawAmount || Number(withdrawAmount) <= 0) return alert('Enter a valid withdraw amount');
+    if (!address) return alert('Please connect your wallet first!');
+    alert('Withdrawal request submitted! Pending admin approval.');
   };
 
   return (
@@ -150,15 +157,23 @@ function WalletModalContent() {
           placeholder="Amount (TON)" 
           className="input mb-sm" 
           style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          value={depositAmount}
+          onChange={(e) => setDepositAmount(e.target.value)}
         />
         <button className="btn btn-primary btn-full mt-sm" onClick={handleDeposit}>Deposit</button>
       </div>
 
       <div className="card">
         <h3 className="mb-sm">Withdraw TON</h3>
-        <button className="btn btn-outline btn-full" onClick={() => alert('Withdrawal request submitted! Pending admin approval.')}>Request Withdrawal</button>
+        <input 
+          type="number" 
+          placeholder="Amount (TON)" 
+          className="input mb-sm" 
+          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
+          value={withdrawAmount}
+          onChange={(e) => setWithdrawAmount(e.target.value)}
+        />
+        <button className="btn btn-outline btn-full mt-sm" onClick={handleWithdraw}>Request Withdrawal</button>
       </div>
     </div>
   );
@@ -192,7 +207,7 @@ function SpinModalContent() {
       const reward = segments[target];
       alert(`You won ${reward.label}!`);
       
-      // Apply reward
+      // Apply reward locally
       if (reward.type === 'energy') {
         useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
       } else if (reward.type === 'votes') {
@@ -206,6 +221,10 @@ function SpinModalContent() {
       } else if (reward.type === 'ton') {
         alert('0.1 TON added to your pending wallet balance!');
       }
+
+      // Save to database
+      api.spin('save_reward', reward).catch(e => console.error('Failed to save spin reward', e));
+
     }, 4000);
   };
 
@@ -232,19 +251,27 @@ function SpinModalContent() {
                     position: 'absolute', 
                     top: '0', 
                     left: '50%', 
+                    width: '60px',
+                    marginLeft: '-30px', // Center width
                     transformOrigin: '50% 150px',
-                    transform: `translateX(-50%) rotate(${rotationAngle}deg)`,
+                    transform: `rotate(${rotationAngle}deg)`,
                     height: '150px',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    paddingTop: '20px',
+                    justifyContent: 'center',
+                    paddingTop: '25px',
                     color: '#fff',
                     fontWeight: 'bold',
-                    fontSize: '0.8rem',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                    fontSize: '0.85rem',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                    zIndex: 2
                   }}
                 >
-                  <span style={{ transform: 'rotate(-90deg)', display: 'block', whiteSpace: 'nowrap' }}>
+                  <span style={{ 
+                    display: 'inline-block',
+                    transform: 'rotate(-90deg)', // keep it upright-ish depending on slice
+                    whiteSpace: 'nowrap'
+                  }}>
                     {segment.label}
                   </span>
                 </div>

@@ -72,7 +72,9 @@ export const telegram = {
     tg.expand();
     tg.setHeaderColor('#0a0e1a');
     tg.setBackgroundColor('#0a0e1a');
-    tg.enableClosingConfirmation();
+    if (tg.disableClosingConfirmation) {
+      tg.disableClosingConfirmation();
+    }
   },
 
   /** Haptic feedback */

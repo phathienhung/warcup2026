@@ -13,20 +13,48 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action } = req.body;
+    const { action, reward } = req.body;
     
-    if (action === 'spin') {
-      // Mock spin
-      const reward = { type: 'votes', amount: 5000 };
-      
-      // Save spin result
-      await supabase.from('spin_results').insert({
-        user_id: user.id,
-        reward_type: reward.type,
-        reward_amount: reward.amount
-      });
-      
-      return res.status(200).json({ success: true, reward });
+    if (action === 'save_reward' && reward) {
+      try {
+        // Fetch current user stats
+        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+        if (!dbUser) return res.status(404).json({ error: 'User not found' });
+
+        const updates = {};
+        
+        if (reward.type === 'energy') {
+          updates.energy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + reward.reward);
+        } else if (reward.type === 'votes') {
+          updates.total_votes = (dbUser.total_votes || 0) + reward.reward;
+          updates.available_votes = (dbUser.available_votes || 0) + reward.reward;
+        } else if (reward.type === 'speed') {
+          // Note: mining speed is derived in some places, but we can store a bonus
+          updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + reward.reward;
+        } else if (reward.type === 'xp') {
+          updates.xp = (dbUser.xp || 0) + reward.reward;
+          // Simple level up logic
+          const newLevel = Math.floor(Math.sqrt(updates.xp / 100)) + 1;
+          if (newLevel > (dbUser.level || 1)) updates.level = newLevel;
+        }
+
+        // Save to users table
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('users').update(updates).eq('telegram_id', user.id);
+        }
+
+        // Save spin history
+        await supabase.from('spin_results').insert({
+          user_id: user.id,
+          reward_type: reward.type,
+          reward_amount: reward.reward
+        });
+        
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.error('Spin save error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
     }
   }
 }
