@@ -3,12 +3,25 @@ import Modal from '../components/Modal';
 import telegram from '../lib/telegram';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import useGameStore from '../store/gameStore';
+import useUserStore from '../store/userStore';
+import api from '../lib/api';
 
 export default function ShopPage() {
   const [activeTab, setActiveTab] = useState('boosts'); // 'boosts' | 'nfts'
   const [selectedItem, setSelectedItem] = useState(null);
   const [tonConnectUI] = useTonConnectUI();
   const { shopItems, nftTemplates } = useGameStore();
+
+  const refreshUserStats = async () => {
+    try {
+      const data = await useUserStore.getState().authenticate();
+      if (data?.user) {
+        useGameStore.getState().setGameState(data.user);
+      }
+    } catch (e) {
+      console.error('Failed to refresh user stats', e);
+    }
+  };
 
   const handleBuy = async () => {
     if (!selectedItem) return;
@@ -32,8 +45,18 @@ export default function ShopPage() {
         telegram.haptic.notification('error');
       }
     } else {
-      telegram.haptic.notification('success');
-      alert(`Successfully purchased ${selectedItem.name} using votes!`);
+      // Votes or Stars
+      try {
+        const res = await api.buyItem(selectedItem.id, 1);
+        if (res.success) {
+          telegram.haptic.notification('success');
+          await refreshUserStats();
+          alert(`Successfully purchased ${selectedItem.name}!`);
+        }
+      } catch (err) {
+        telegram.haptic.notification('error');
+        alert(err.message || 'Failed to purchase item');
+      }
     }
     setSelectedItem(null);
   };
