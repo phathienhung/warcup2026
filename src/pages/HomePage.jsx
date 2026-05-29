@@ -9,7 +9,7 @@ import telegram from '../lib/telegram';
 import Modal from '../components/Modal';
 import { SPIN_SEGMENTS, formatNumberFull } from '../data/constants';
 import useUserStore from '../store/userStore';
-import { TonConnectButton } from '@tonconnect/ui-react';
+import { TonConnectButton, useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
@@ -111,10 +111,30 @@ function RankModalContent() {
 // ── Wallet Modal ────────────────────────────────────
 function WalletModalContent() {
   const [amount, setAmount] = useState('');
+  const [tonConnectUI] = useTonConnectUI();
+  const address = useTonAddress();
   
-  const handleDeposit = () => {
-    if (!amount) return;
-    alert(`Please send ${amount} TON via TonConnect. Transaction logic will trigger here.`);
+  const handleDeposit = async () => {
+    if (!amount || Number(amount) <= 0) return alert('Enter a valid amount');
+    if (!address) return alert('Please connect your wallet first!');
+    
+    const transaction = {
+      validUntil: Math.floor(Date.now() / 1000) + 300, // 5 min
+      messages: [
+        {
+          address: "EQB_Your_Backend_Wallet_Address_Here",
+          amount: (Number(amount) * 1e9).toString() // in nanoTON
+        }
+      ]
+    };
+
+    try {
+      await tonConnectUI.sendTransaction(transaction);
+      alert('Deposit transaction sent successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Transaction cancelled or failed');
+    }
   };
 
   return (
@@ -129,7 +149,7 @@ function WalletModalContent() {
           type="number" 
           placeholder="Amount (TON)" 
           className="input mb-sm" 
-          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%' }}
+          style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
@@ -138,7 +158,7 @@ function WalletModalContent() {
 
       <div className="card">
         <h3 className="mb-sm">Withdraw TON</h3>
-        <button className="btn btn-outline btn-full">Request Withdrawal</button>
+        <button className="btn btn-outline btn-full" onClick={() => alert('Withdrawal request submitted! Pending admin approval.')}>Request Withdrawal</button>
       </div>
     </div>
   );
@@ -148,19 +168,28 @@ function WalletModalContent() {
 function SpinModalContent() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
+  
+  const segments = useGameStore(s => s.spinSegments) || [];
 
   const handleSpin = () => {
-    if (spinning) return;
+    if (spinning || segments.length === 0) return;
     setSpinning(true);
-    const target = Math.floor(Math.random() * SPIN_SEGMENTS.length);
+    const target = Math.floor(Math.random() * segments.length);
     const spins = 5; 
-    const targetRotation = (spins * 360) + (target * (360/SPIN_SEGMENTS.length)) + 180;
+    
+    // Calculate the angle for each segment
+    const segmentAngle = 360 / segments.length;
+    // Add a random offset within the segment so it doesn't land on the edge
+    const randomOffset = Math.floor(Math.random() * (segmentAngle * 0.8)) + (segmentAngle * 0.1); 
+    // The target angle (pointer is at the top, so we need to rotate so the target segment is at the top)
+    const targetRotation = (spins * 360) + (360 - (target * segmentAngle)) - randomOffset;
+    
     setRotation(rotation + targetRotation);
 
     setTimeout(() => {
       setSpinning(false);
       telegram.haptic.notification('success');
-      const reward = SPIN_SEGMENTS[target];
+      const reward = segments[target];
       alert(`You won ${reward.label}!`);
       
       // Apply reward
@@ -180,6 +209,8 @@ function SpinModalContent() {
     }, 4000);
   };
 
+  if (!segments || segments.length === 0) return <div>Loading...</div>;
+
   return (
     <div className="spin-modal text-center">
       <div className="spin-container mb-xl" style={{ marginTop: '20px' }}>
@@ -189,9 +220,37 @@ function SpinModalContent() {
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(${SPIN_SEGMENTS.map((s, i) => `${s.color} ${i * (100 / SPIN_SEGMENTS.length)}% ${(i + 1) * (100 / SPIN_SEGMENTS.length)}%`).join(', ')})`
+              background: `conic-gradient(${segments.map((s, i) => `${s.color} ${i * (100 / segments.length)}% ${(i + 1) * (100 / segments.length)}%`).join(', ')})`
             }}
-          />
+          >
+            {segments.map((segment, index) => {
+              const rotationAngle = (index * (360 / segments.length)) + (180 / segments.length);
+              return (
+                <div 
+                  key={index} 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '0', 
+                    left: '50%', 
+                    transformOrigin: '50% 150px',
+                    transform: `translateX(-50%) rotate(${rotationAngle}deg)`,
+                    height: '150px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    paddingTop: '20px',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontSize: '0.8rem',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                  }}
+                >
+                  <span style={{ transform: 'rotate(-90deg)', display: 'block', whiteSpace: 'nowrap' }}>
+                    {segment.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
       <button className="btn btn-gold btn-lg mt-lg btn-full" onClick={handleSpin} disabled={spinning}>

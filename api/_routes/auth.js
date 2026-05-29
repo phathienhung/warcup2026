@@ -62,9 +62,10 @@ export default async function handler(req, res) {
       }
     } else {
       // Update login streak and last login
-      const lastLogin = new Date(dbUser.last_login);
+      const lastLogin = new Date(dbUser.last_login || new Date());
       const now = new Date();
       const diffHours = (now - lastLogin) / (1000 * 60 * 60);
+      const diffMs = now - lastLogin;
       
       let newStreak = dbUser.login_streak;
       if (diffHours > 24 && diffHours < 48) {
@@ -73,12 +74,23 @@ export default async function handler(req, res) {
         newStreak = 1;
       }
 
+      // Offline energy regen
+      const regenRateMs = 1000;
+      const energyGained = Math.floor(diffMs / regenRateMs);
+      const newEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
+
       await supabase
         .from('users')
-        .update({ last_login: now.toISOString(), login_streak: newStreak, username: user.username })
+        .update({ 
+          last_login: now.toISOString(), 
+          login_streak: newStreak, 
+          username: user.username,
+          energy: newEnergy 
+        })
         .eq('telegram_id', user.id);
         
       dbUser.login_streak = newStreak;
+      dbUser.energy = newEnergy;
     }
 
     // Get friend count for mining speed calculation
