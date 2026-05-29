@@ -65,6 +65,17 @@ export default function TasksPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const refreshUserStats = async () => {
+    try {
+      const data = await useUserStore.getState().authenticate();
+      if (data?.user) {
+        useGameStore.getState().setGameState(data.user);
+      }
+    } catch (e) {
+      console.error('Failed to refresh user stats', e);
+    }
+  };
+
   const today = new Date().toISOString().split('T')[0];
   const lastStreakClaim = user?.last_streak_claim;
   const canClaimStreak = lastStreakClaim !== today;
@@ -82,7 +93,7 @@ export default function TasksPage() {
           user: { ...s.user, last_streak_claim: today } 
         }));
         // Refresh full user stats to update UI instantly
-        useUserStore.getState().authenticate();
+        await refreshUserStats();
         alert(`Streak Claimed! +${res.rewardValue} ${res.rewardType}`);
       }
     } catch (e) {
@@ -119,7 +130,7 @@ export default function TasksPage() {
           telegram.haptic.notification('success');
           setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'claimed' } : t));
           // Refresh user stats instantly
-          useUserStore.getState().authenticate();
+          await refreshUserStats();
           alert(`Task Claimed! +${res.rewardValue} ${res.rewardType}`);
         }
       }
@@ -140,7 +151,7 @@ export default function TasksPage() {
       if (res.success) {
         telegram.haptic.notification('success');
         setClaimedAchievements(prev => [...prev, achievement.id]);
-        useUserStore.getState().authenticate();
+        await refreshUserStats();
         alert(`Achievement Claimed! +${res.rewardVotes} Votes`);
       }
     } catch (e) {
