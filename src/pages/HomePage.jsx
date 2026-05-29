@@ -179,7 +179,7 @@ function SpinModalContent() {
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(from ${-90 - (360/segCount)/2}deg, ${segments.map((s, i) =>
+              background: `conic-gradient(from -${(360/segCount)/2}deg, ${segments.map((s, i) =>
                 `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`
               ).join(', ')})`
             }}
