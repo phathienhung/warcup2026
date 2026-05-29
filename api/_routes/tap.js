@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       // 1. Get current user stats
       const { data: dbUser } = await supabase
         .from('users')
-        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level')
+        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, last_login')
         .eq('telegram_id', user.id)
         .single();
 
@@ -39,15 +39,23 @@ export default async function handler(req, res) {
 
       const speed = computeSpeed(dbUser, friendCount || 0);
       
+      // Calculate background energy regen since last interaction
+      const now = new Date();
+      const lastLogin = new Date(dbUser.last_login || now);
+      const diffMs = now - lastLogin;
+      const regenRateMs = 1000;
+      const energyGained = Math.floor(diffMs / regenRateMs);
+      const currentRegennedEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
+
       const energyCost = count * speed;
-      if (dbUser.energy < energyCost) {
-        return res.status(400).json({ error: 'Not enough energy', energy: dbUser.energy });
+      if (currentRegennedEnergy < energyCost) {
+        return res.status(400).json({ error: 'Not enough energy', energy: currentRegennedEnergy });
       }
 
       const votesGained = count * speed;
       const xpGained = count; // 1 tap = 1 XP
       
-      const newEnergy = Math.max(0, dbUser.energy - energyCost);
+      const newEnergy = Math.max(0, currentRegennedEnergy - energyCost);
       const newTotalVotes = Number(dbUser.total_votes) + votesGained;
       const newAvailableVotes = Number(dbUser.available_votes) + votesGained;
       const newTotalTaps = Number(dbUser.total_taps) + count;
@@ -64,7 +72,8 @@ export default async function handler(req, res) {
           available_votes: newAvailableVotes,
           total_taps: newTotalTaps,
           xp: newXp,
-          level: newLevel
+          level: newLevel,
+          last_login: now.toISOString() // Update last_login so next regen is calculated from now
         })
         .eq('telegram_id', user.id);
 

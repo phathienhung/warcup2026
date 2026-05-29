@@ -18,7 +18,7 @@ export default function SpinPage() {
 
     const target = Math.floor(Math.random() * segCount);
     const segmentAngle = 360 / segCount;
-    const offsetInSegment = segmentAngle * 0.15 + Math.random() * segmentAngle * 0.7;
+    const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
 
     // Same math as HomePage spin
     const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
@@ -52,12 +52,12 @@ export default function SpinPage() {
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(from -90deg, ${segments.map((s, i) => `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`).join(', ')})`
+              background: `conic-gradient(from ${-90 - (360/segCount)/2}deg, ${segments.map((s, i) => `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`).join(', ')})`
             }}
           >
             {segments.map((segment, index) => {
               const segmentAngle = 360 / segCount;
-              const centerAngle = index * segmentAngle + segmentAngle / 2;
+              const centerAngle = index * segmentAngle;
               return (
                 <div 
                   key={index}

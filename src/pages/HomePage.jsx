@@ -113,27 +113,22 @@ function SpinModalContent() {
     setSpinning(true);
     setWonPrize(null);
 
-    // Pick a random target segment index
     const target = Math.floor(Math.random() * segCount);
     const segmentAngle = 360 / segCount;
 
-    // Random position within the target segment (15%-85% to avoid edges)
-    const offsetInSegment = segmentAngle * 0.15 + Math.random() * segmentAngle * 0.7;
+    // Segment 0 is now centered at the top.
+    // Random position within the target segment (-35% to +35% of segment angle from center)
+    const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
 
-    // The wheel uses conic-gradient(from -90deg), so segment 0 starts at the TOP.
-    // Segment[i] spans [i*segmentAngle, (i+1)*segmentAngle) from the top, clockwise.
     // The pointer is fixed at the top (0°).
-    // When the wheel has rotated a total of R degrees, the pointer points at
-    // the segment at angle (360 - (R % 360)) % 360 from the top.
+    // When the wheel has rotated a total of R degrees clockwise, the pointer points at
+    // the angle (360 - R % 360) % 360 from the top.
     // We want that to equal target*segmentAngle + offsetInSegment.
-    // So: (360 - R%360) % 360 = target*segmentAngle + offsetInSegment
-    //     R%360 = (360 - target*segmentAngle - offsetInSegment) % 360
     const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
     const currentRemainder = ((rotation % 360) + 360) % 360;
-    // How much to add so that (rotation + delta) % 360 = desiredRemainder
     let delta = desiredRemainder - currentRemainder;
     if (delta < 0) delta += 360;
-    const fullSpins = 5 * 360; // 5 full rotations for drama
+    const fullSpins = 5 * 360;
     const totalDelta = fullSpins + delta;
 
     setRotation(prev => prev + totalDelta);
@@ -184,14 +179,14 @@ function SpinModalContent() {
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(from -90deg, ${segments.map((s, i) =>
+              background: `conic-gradient(from ${-90 - (360/segCount)/2}deg, ${segments.map((s, i) =>
                 `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`
               ).join(', ')})`
             }}
           >
             {segments.map((segment, index) => {
-              // Place label at the center angle of each segment
-              const centerAngle = index * segmentAngle + segmentAngle / 2;
+              // Place label exactly at the center of the segment (which is index * segmentAngle)
+              const centerAngle = index * segmentAngle;
               return (
                 <div 
                   key={index} 
