@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS tasks (
 -- Insert sample tasks
 INSERT INTO tasks (id, title, description, icon, type, action_url, verification_data, reward_type, reward_value)
 VALUES 
-  ('join_channel', 'Join Official Channel', 'Join our Telegram channel for news!', '📢', 'telegram', 'https://t.me/warcup2026_community', '@warcup2026_community', 'speed', 1),
-  ('play_other_game', 'Play Partner Game', 'Try our partner game!', '🎮', 'link', 'https://t.me/OtherGameBot', NULL, 'votes', 1000)
+  ('join_channel', 'Join Official Channel', 'Join our Telegram channel for news!', '📢', 'telegram', 'https://t.me/headshot_hunter_global_chat', 'Headshot_hunter Global Chat', 'speed', 1),
+  ('play_other_game', 'Play Partner Game', 'Try our partner game!', '🎮', 'link', 'https://t.me/headshot_hunter_bot', NULL, 'votes', 1000)
 ON CONFLICT (id) DO NOTHING;
 
 -- Modify user_tasks if needed. user_tasks already has (user_id, task_id, progress, completed, completed_at, reset_date)

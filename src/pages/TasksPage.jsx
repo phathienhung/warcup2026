@@ -128,7 +128,7 @@ export default function TasksPage() {
           </div>
 
           <div className="flex-col gap-sm">
-            {tasks.map(task => (
+            {Array.isArray(tasks) ? tasks.map(task => (
               <div key={task.id} className={`task-card ${task.status === 'claimed' ? 'completed' : ''}`}>
                 <div className="task-icon">{task.icon}</div>
                 <div className="task-info">
@@ -156,7 +156,11 @@ export default function TasksPage() {
                   )}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>
+                No tasks available or failed to load.
+              </div>
+            )}
           </div>
         </>
       )}

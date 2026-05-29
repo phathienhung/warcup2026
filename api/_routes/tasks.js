@@ -1,6 +1,5 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
-import fetch from 'node-fetch'; // if available, or native fetch
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -17,29 +16,30 @@ export default async function handler(req, res) {
         .select('*')
         .eq('is_active', true);
         
-      if (tasksError) throw tasksError;
+      if (tasksError) {
+        console.error('Tasks table error:', tasksError);
+        return res.status(200).json([]); // Return empty array if table doesn't exist yet
+      }
 
       // Get user's task progress
-      const { data: userTasks, error: userTasksError } = await supabase
+      const { data: userTasks } = await supabase
         .from('user_tasks')
         .select('*')
         .eq('user_id', user.id);
-        
-      if (userTasksError) throw userTasksError;
 
       // Map progress to tasks
-      const merged = allTasks.map(task => {
-        const progress = userTasks.find(ut => ut.task_id === task.id);
+      const merged = (allTasks || []).map(task => {
+        const progress = (userTasks || []).find(ut => ut.task_id === task.id);
         return {
           ...task,
-          status: progress ? progress.status : 'pending', // 'pending', 'verified', 'claimed'
+          status: progress ? progress.status : 'pending',
         };
       });
 
       return res.status(200).json(merged);
     } catch (e) {
-      console.error(e);
-      return res.status(500).json({ error: 'Failed to fetch tasks' });
+      console.error('Tasks GET error:', e);
+      return res.status(200).json([]); // Graceful fallback
     }
   }
 
@@ -48,7 +48,11 @@ export default async function handler(req, res) {
 
     if (action === 'claim_streak') {
       try {
-        const { data: dbUser } = await supabase.from('users').select('login_streak, last_streak_claim').eq('telegram_id', user.id).single();
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('login_streak, last_streak_claim, mining_speed_bonus, energy_regen_bonus, max_energy')
+          .eq('telegram_id', user.id)
+          .single();
         if (!dbUser) return res.status(404).json({ error: 'User not found' });
 
         const today = new Date().toISOString().split('T')[0];
@@ -74,7 +78,7 @@ export default async function handler(req, res) {
         await supabase.from('users').update(updates).eq('telegram_id', user.id);
         return res.status(200).json({ success: true, rewardType, rewardValue });
       } catch (e) {
-        console.error(e);
+        console.error('Claim streak error:', e);
         return res.status(500).json({ error: 'Server error' });
       }
     }
@@ -84,33 +88,38 @@ export default async function handler(req, res) {
         const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
         if (!task) return res.status(404).json({ error: 'Task not found' });
 
-        // If it's a telegram channel task, verify with Telegram API
+        // If it's a telegram channel/group task, verify membership with Bot API
         if (task.type === 'telegram' && task.verification_data) {
           const botToken = process.env.TELEGRAM_BOT_TOKEN;
-          const channelId = task.verification_data; // e.g. @warcup2026
+          const channelId = task.verification_data; // e.g. '@warcup2026_community'
           
           const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${user.id}`);
           const tgData = await tgRes.json();
           
           if (!tgData.ok) {
-            return res.status(400).json({ error: 'Verification failed. Make sure the bot is an admin of the channel.' });
+            return res.status(400).json({ error: 'Verification failed. Make sure the bot is an admin of the channel/group.' });
           }
           
-          const status = tgData.result.status;
-          if (['member', 'administrator', 'creator'].includes(status)) {
-            // verified!
-            await supabase.from('user_tasks').upsert({ user_id: user.id, task_id: taskId, status: 'verified' }, { onConflict: 'user_id,task_id,reset_date' });
+          const memberStatus = tgData.result.status;
+          if (['member', 'administrator', 'creator'].includes(memberStatus)) {
+            await supabase.from('user_tasks').upsert(
+              { user_id: user.id, task_id: taskId, status: 'verified' },
+              { onConflict: 'user_id,task_id,reset_date' }
+            );
             return res.status(200).json({ success: true, status: 'verified' });
           } else {
-            return res.status(400).json({ error: 'You have not joined the channel yet.' });
+            return res.status(400).json({ error: 'You have not joined the channel/group yet.' });
           }
         } else {
-          // For simple link tasks, just mark verified automatically after they click
-          await supabase.from('user_tasks').upsert({ user_id: user.id, task_id: taskId, status: 'verified' }, { onConflict: 'user_id,task_id,reset_date' });
+          // For link tasks, mark verified when they come back
+          await supabase.from('user_tasks').upsert(
+            { user_id: user.id, task_id: taskId, status: 'verified' },
+            { onConflict: 'user_id,task_id,reset_date' }
+          );
           return res.status(200).json({ success: true, status: 'verified' });
         }
       } catch (e) {
-        console.error(e);
+        console.error('Verify task error:', e);
         return res.status(500).json({ error: 'Server error' });
       }
     }
@@ -122,7 +131,6 @@ export default async function handler(req, res) {
 
         const { data: userTask } = await supabase.from('user_tasks').select('*').eq('user_id', user.id).eq('task_id', taskId).single();
         
-        // Ensure they verified it first
         if (!userTask || userTask.status !== 'verified') {
           return res.status(400).json({ error: 'Task not verified yet' });
         }
@@ -139,14 +147,22 @@ export default async function handler(req, res) {
         } else if (task.reward_type === 'votes') {
           updates.total_votes = (dbUser.total_votes || 0) + task.reward_value;
           updates.available_votes = (dbUser.available_votes || 0) + task.reward_value;
+        } else if (task.reward_type === 'xp') {
+          updates.xp = (dbUser.xp || 0) + task.reward_value;
         }
 
-        await supabase.from('users').update(updates).eq('telegram_id', user.id);
-        await supabase.from('user_tasks').update({ status: 'claimed', completed: true, completed_at: new Date().toISOString() }).eq('id', userTask.id);
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('users').update(updates).eq('telegram_id', user.id);
+        }
+        await supabase.from('user_tasks').update({
+          status: 'claimed',
+          completed: true,
+          completed_at: new Date().toISOString()
+        }).eq('id', userTask.id);
 
         return res.status(200).json({ success: true, rewardType: task.reward_type, rewardValue: task.reward_value });
       } catch (e) {
-        console.error(e);
+        console.error('Claim task error:', e);
         return res.status(500).json({ error: 'Server error' });
       }
     }

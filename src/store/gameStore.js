@@ -54,9 +54,10 @@ export const useGameStore = create((set, get) => ({
   async loadTasks() {
     try {
       const data = await api.getTasks();
-      set({ dailyTasks: data });
+      set({ dailyTasks: Array.isArray(data) ? data : [] });
     } catch (e) {
       console.error('Failed to load tasks', e);
+      set({ dailyTasks: [] });
     }
   },
 
