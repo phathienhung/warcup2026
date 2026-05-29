@@ -121,15 +121,12 @@ export const SHOP_ITEMS = [
 
 // ── Lucky Spin ───────────────────────────────────────
 export const SPIN_SEGMENTS = [
-  { label: '100 Votes', reward: 100, type: 'votes', color: '#00ff88', probability: 0.25 },
-  { label: '500 Votes', reward: 500, type: 'votes', color: '#00d4ff', probability: 0.20 },
-  { label: '1K Votes', reward: 1000, type: 'votes', color: '#a855f7', probability: 0.15 },
-  { label: '5K Votes', reward: 5000, type: 'votes', color: '#ffd700', probability: 0.08 },
-  { label: 'Energy x2', reward: 2, type: 'energy_mult', color: '#ff6b35', probability: 0.12 },
-  { label: 'Speed +1h', reward: 1, type: 'speed_boost', color: '#ff3366', probability: 0.10 },
-  { label: 'NFT Box', reward: 1, type: 'nft_box', color: '#e040fb', probability: 0.05 },
-  { label: '50K Votes', reward: 50000, type: 'votes', color: '#ff0055', probability: 0.03 },
-  { label: 'Try Again', reward: 0, type: 'nothing', color: '#333', probability: 0.02 },
+  { label: '+50 Energy', reward: 50, type: 'energy', color: '#ff6b35', probability: 0.20 },
+  { label: '+500 Votes', reward: 500, type: 'votes', color: '#00d4ff', probability: 0.20 },
+  { label: '+0.1 TON', reward: 0.1, type: 'ton', color: '#00d4ff', probability: 0.05 },
+  { label: '+1 Speed', reward: 1, type: 'speed', color: '#ff3366', probability: 0.15 },
+  { label: '+100 XP', reward: 100, type: 'xp', color: '#a855f7', probability: 0.20 },
+  { label: '+Regen', reward: 1, type: 'regen', color: '#00ff88', probability: 0.20 },
 ];
 
 // ── Daily Tasks ──────────────────────────────────────

@@ -18,7 +18,9 @@ export default async function handler(req, res) {
         energy_regen_rate_ms: 1000,
         energy_regen_amount: 1,
         max_energy_base: 1000,
-        base_mining_speed: 1
+        base_mining_speed: 1,
+        base_xp_req: 1000,
+        spin_segments_json: null
       };
       
       return res.status(200).json({ config: defaultConfig, nations: nations || [] });

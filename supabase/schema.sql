@@ -113,8 +113,21 @@ CREATE TABLE IF NOT EXISTS game_config (
   energy_regen_rate_ms INT DEFAULT 1000,
   energy_regen_amount INT DEFAULT 1,
   max_energy_base INT DEFAULT 1000,
-  base_mining_speed INT DEFAULT 1
+  base_mining_speed INT DEFAULT 1,
+  base_xp_req INT DEFAULT 1000,
+  spin_segments_json JSONB DEFAULT '[]'::jsonb
 );
+
+INSERT INTO game_config (id, energy_regen_rate_ms, energy_regen_amount, max_energy_base, base_mining_speed, base_xp_req, spin_segments_json) 
+VALUES (1, 1000, 1, 1000, 1, 1000, '[
+  {"label": "+50 Energy", "reward": 50, "type": "energy", "color": "#ff6b35", "probability": 0.20},
+  {"label": "+500 Votes", "reward": 500, "type": "votes", "color": "#00d4ff", "probability": 0.20},
+  {"label": "+0.1 TON", "reward": 0.1, "type": "ton", "color": "#00d4ff", "probability": 0.05},
+  {"label": "+1 Speed", "reward": 1, "type": "speed", "color": "#ff3366", "probability": 0.15},
+  {"label": "+100 XP", "reward": 100, "type": "xp", "color": "#a855f7", "probability": 0.20},
+  {"label": "+Regen", "reward": 1, "type": "regen", "color": "#00ff88", "probability": 0.20}
+]'::jsonb)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS nations (
   code TEXT PRIMARY KEY,

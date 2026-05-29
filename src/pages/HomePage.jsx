@@ -160,7 +160,23 @@ function SpinModalContent() {
     setTimeout(() => {
       setSpinning(false);
       telegram.haptic.notification('success');
-      alert(`You won ${SPIN_SEGMENTS[target].label}!`);
+      const reward = SPIN_SEGMENTS[target];
+      alert(`You won ${reward.label}!`);
+      
+      // Apply reward
+      if (reward.type === 'energy') {
+        useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
+      } else if (reward.type === 'votes') {
+        useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
+      } else if (reward.type === 'speed') {
+        useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + reward.reward }));
+      } else if (reward.type === 'xp') {
+        useUserStore.getState().addXp(reward.reward);
+      } else if (reward.type === 'regen') {
+        useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
+      } else if (reward.type === 'ton') {
+        alert('0.1 TON added to your pending wallet balance!');
+      }
     }, 4000);
   };
 

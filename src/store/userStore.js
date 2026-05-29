@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 import telegram from '../lib/telegram';
+import useGameStore from './gameStore';
 
 export const useUserStore = create((set, get) => ({
   // ── User Data ─────────────────────────────────────
@@ -99,7 +100,8 @@ export const useUserStore = create((set, get) => ({
 
   // ── Level System ──────────────────────────────────
   getXpForLevel(level) {
-    return Math.floor(100 * Math.pow(1.5, level - 1));
+    const baseXp = useGameStore.getState().configBaseXp || 1000;
+    return Math.floor(baseXp * Math.pow(2, level - 1));
   },
 
   addXp(amount) {

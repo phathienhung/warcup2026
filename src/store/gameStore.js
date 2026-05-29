@@ -28,6 +28,8 @@ export const useGameStore = create((set, get) => ({
         energyRegenAmount: config.energy_regen_amount || 1,
         maxEnergy: config.max_energy_base || 1000,
         miningSpeed: config.base_mining_speed || 1,
+        configBaseXp: config.base_xp_req || 1000,
+        spinSegments: config.spin_segments_json || null,
         configLoaded: true
       });
       // Restart regen with new rate

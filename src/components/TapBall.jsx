@@ -3,31 +3,19 @@ import React, { useRef } from 'react';
 export default function TapBall({ onTap }) {
   const ballRef = useRef(null);
 
-  const handleTouchStart = (e) => {
+  const handlePointerDown = (e) => {
+    // Check if it's a valid pointer event
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    
+    // Prevent default to stop duplicate touch events in some browsers
     e.preventDefault();
-    const touchPoints = [];
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      touchPoints.push({
-        x: touch.clientX,
-        y: touch.clientY,
+    
+    if (onTap) {
+      onTap([{
+        clientX: e.clientX,
+        clientY: e.clientY,
         timestamp: Date.now(),
-      });
-    }
-    if (onTap) {
-      onTap(touchPoints);
-    }
-  };
-
-  const handleMouseDown = (e) => {
-    e.preventDefault();
-    const touchPoints = [{
-      x: e.clientX,
-      y: e.clientY,
-      timestamp: Date.now(),
-    }];
-    if (onTap) {
-      onTap(touchPoints);
+      }]);
     }
   };
 
@@ -39,8 +27,8 @@ export default function TapBall({ onTap }) {
       <div
         ref={ballRef}
         className="tap-ball"
-        onTouchStart={handleTouchStart}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
+        style={{ touchAction: 'none' }} // Crucial for preventing scroll/zoom on tap
       />
     </div>
   );

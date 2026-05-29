@@ -8,6 +8,7 @@ import telegram from '../lib/telegram';
 
 export default function ProfilePage() {
   const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount } = useUserStore();
+  const { tapCount } = useGameStore();
   const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends'
   
   const nations = useGameStore(s => s.nations) || [];
@@ -25,6 +26,9 @@ export default function ProfilePage() {
     const text = `Join World Cup Mining War 2026 and get a 5,000 vote bonus! ⚽🏆`;
     telegram.shareUrl(link, text);
   };
+
+  // Live total taps calculation
+  const liveTotalTaps = (totalTaps || 0) + (tapCount || 0);
 
   return (
     <div className="page">
@@ -61,7 +65,7 @@ export default function ProfilePage() {
 
           <div className="profile-stats mb-lg">
             <div className="profile-stat">
-              <div className="profile-stat-value">{formatNumber(totalTaps || 0)}</div>
+              <div className="profile-stat-value">{formatNumber(liveTotalTaps)}</div>
               <div className="profile-stat-label">Total Taps</div>
             </div>
             <div className="profile-stat">
