@@ -9,8 +9,9 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    // Return mock items
-    return res.status(200).json([]); 
+    const { data: items, error } = await supabase.from('shop_items').select('*');
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json(items);
   }
 
   if (req.method === 'POST') {
