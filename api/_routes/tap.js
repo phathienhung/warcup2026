@@ -63,6 +63,22 @@ export default async function handler(req, res) {
       const newXp = Number(dbUser.xp) + xpGained;
       
       const newLevel = computeLevelFromXp(newXp);
+      const levelUpUpdates = {};
+
+      if (newLevel > (dbUser.level || 1)) {
+        const { data: config } = await supabase.from('game_config').select('level_up_reward_type, level_up_reward_value').eq('id', 1).single();
+        const levelsGained = newLevel - (dbUser.level || 1);
+        const rewardType = config?.level_up_reward_type || 'speed';
+        const rewardValue = (config?.level_up_reward_value || 1) * levelsGained;
+
+        if (rewardType === 'speed') {
+          levelUpUpdates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + rewardValue;
+        } else if (rewardType === 'regen') {
+          levelUpUpdates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + rewardValue;
+        } else if (rewardType === 'max_energy') {
+          levelUpUpdates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
+        }
+      }
 
       // 3. Update DB
       const { error } = await supabase
@@ -74,7 +90,8 @@ export default async function handler(req, res) {
           total_taps: newTotalTaps,
           xp: newXp,
           level: newLevel,
-          last_login: now.toISOString() // Update last_login so next regen is calculated from now
+          last_login: now.toISOString(), // Update last_login so next regen is calculated from now
+          ...levelUpUpdates
         })
         .eq('telegram_id', user.id);
 

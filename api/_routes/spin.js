@@ -35,7 +35,21 @@ export default async function handler(req, res) {
         } else if (reward.type === 'xp') {
           updates.xp = (dbUser.xp || 0) + reward.reward;
           const newLevel = computeLevelFromXp(updates.xp);
-          if (newLevel > (dbUser.level || 1)) updates.level = newLevel;
+          if (newLevel > (dbUser.level || 1)) {
+            updates.level = newLevel;
+            const { data: config } = await supabase.from('game_config').select('level_up_reward_type, level_up_reward_value').eq('id', 1).single();
+            const levelsGained = newLevel - (dbUser.level || 1);
+            const rewardType = config?.level_up_reward_type || 'speed';
+            const rewardValue = (config?.level_up_reward_value || 1) * levelsGained;
+
+            if (rewardType === 'speed') {
+              updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + rewardValue;
+            } else if (rewardType === 'regen') {
+              updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + rewardValue;
+            } else if (rewardType === 'max_energy') {
+              updates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
+            }
+          }
         } else if (reward.type === 'regen') {
           updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + reward.reward;
         } else if (reward.type === 'ton') {

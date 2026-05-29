@@ -57,10 +57,17 @@ export default function ProfilePage() {
           <div className="card mb-lg">
             <div className="flex-between mb-sm">
               <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Level {level}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{formatNumber(xp)} / {formatNumber(xpToNextLevel)} XP</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {formatNumber(Math.max(0, xp - (useGameStore.getState().configBaseXp || 1000) * (Math.pow(2, level - 1) - 1)))} / {formatNumber((useGameStore.getState().configBaseXp || 1000) * Math.pow(2, level - 1))} XP
+              </span>
             </div>
             <div className="progress-bar">
-              <div className="progress-bar-fill" style={{ width: `${(xp / xpToNextLevel) * 100}%` }} />
+              <div 
+                className="progress-bar-fill" 
+                style={{ 
+                  width: `${Math.min(100, (Math.max(0, xp - (useGameStore.getState().configBaseXp || 1000) * (Math.pow(2, level - 1) - 1)) / ((useGameStore.getState().configBaseXp || 1000) * Math.pow(2, level - 1))) * 100)}%` 
+                }} 
+              />
             </div>
           </div>
 
