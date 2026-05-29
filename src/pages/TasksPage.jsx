@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { formatNumber } from '../data/constants';
 import useGameStore from '../store/gameStore';
 import useUserStore from '../store/userStore';
@@ -7,34 +7,38 @@ import api from '../lib/api';
 
 export default function TasksPage() {
   const [activeTab, setActiveTab] = useState('daily');
-  const { dailyTasks: dbTasks, achievements: dbAchievements, loadTasks } = useGameStore();
-  const { user } = useUserStore();
+  const achievements = useGameStore(s => s.achievements);
+  const loginStreak = useUserStore(s => s.loginStreak);
+  const user = useUserStore(s => s.user);
   
   const [tasks, setTasks] = useState([]);
-  const [achievements, setAchievements] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [claimingStreak, setClaimingStreak] = useState(false);
   const [processingTask, setProcessingTask] = useState(null);
 
+  // Fetch tasks from API on mount
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
-
-  useEffect(() => {
-    if (dbTasks && dbTasks.length > 0) {
-      setTasks(dbTasks);
+    let cancelled = false;
+    async function fetchTasks() {
+      try {
+        const data = await api.getTasks();
+        if (!cancelled && Array.isArray(data)) {
+          setTasks(data);
+        }
+      } catch (e) {
+        console.error('Failed to load tasks', e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [dbTasks]);
-
-  useEffect(() => {
-    if (dbAchievements && dbAchievements.length > 0) {
-      setAchievements(dbAchievements.map((a, i) => ({ ...a, unlocked: i === 0 })));
-    }
-  }, [dbAchievements]);
+    fetchTasks();
+    return () => { cancelled = true; };
+  }, []);
 
   const today = new Date().toISOString().split('T')[0];
   const lastStreakClaim = user?.last_streak_claim;
   const canClaimStreak = lastStreakClaim !== today;
-  const streakDay = Math.min(user?.login_streak || 1, 7);
+  const streakDay = Math.min(loginStreak || 1, 7);
 
   const handleClaimStreak = async () => {
     if (!canClaimStreak || claimingStreak) return;
@@ -50,7 +54,8 @@ export default function TasksPage() {
         alert(`Streak Claimed! +${res.rewardValue} ${res.rewardType}`);
       }
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to claim streak');
+      const msg = e?.message || 'Failed to claim streak';
+      alert(msg);
     } finally {
       setClaimingStreak(false);
     }
@@ -64,7 +69,7 @@ export default function TasksPage() {
       if (task.status === 'pending') {
         // Step 1: Open link
         if (task.action_url) {
-          telegram.openLink(task.action_url);
+          try { telegram.openLink(task.action_url); } catch { window.open(task.action_url, '_blank'); }
         }
         // Change status locally to allow verify step
         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'verifying' } : t));
@@ -80,14 +85,32 @@ export default function TasksPage() {
         const res = await api.claimTask(task.id);
         if (res.success) {
           telegram.haptic.notification('success');
+          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'claimed' } : t));
           alert(`Task Claimed! +${res.rewardValue} ${res.rewardType}`);
-          await loadTasks();
         }
       }
     } catch (e) {
-      alert(e.response?.data?.error || 'Action failed');
+      const msg = e?.message || 'Action failed';
+      alert(msg);
     } finally {
       setProcessingTask(null);
+    }
+  };
+
+  const getButtonLabel = (status) => {
+    switch (status) {
+      case 'claimed': return 'Done';
+      case 'verified': return 'Claim';
+      case 'verifying': return 'Verify';
+      default: return 'Go';
+    }
+  };
+
+  const getButtonClass = (status) => {
+    switch (status) {
+      case 'claimed': return 'btn btn-sm';
+      case 'verified': return 'btn btn-primary btn-sm';
+      default: return 'btn btn-outline btn-sm';
     }
   };
 
@@ -105,13 +128,14 @@ export default function TasksPage() {
 
       {activeTab === 'daily' && (
         <>
+          {/* Streak Card */}
           <div 
             className={`card mb-lg text-center ${canClaimStreak ? 'card-gold' : ''}`} 
             style={{ cursor: canClaimStreak ? 'pointer' : 'default', opacity: canClaimStreak ? 1 : 0.8 }}
             onClick={handleClaimStreak}
           >
             <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-              {canClaimStreak ? 'Tap to claim daily streak!' : 'Come back tomorrow for next streak!'}
+              {canClaimStreak ? '🎁 Tap to claim daily streak!' : '✅ Come back tomorrow!'}
             </h3>
             <div className="streak-calendar">
               {[1, 2, 3, 4, 5, 6, 7].map(day => (
@@ -121,58 +145,56 @@ export default function TasksPage() {
               ))}
             </div>
             {canClaimStreak && (
-              <button className="btn btn-primary btn-sm mt-md" disabled={claimingStreak}>
+              <button className="btn btn-primary btn-sm mt-md" disabled={claimingStreak} style={{ marginTop: '12px' }}>
                 {claimingStreak ? 'Claiming...' : 'Claim Streak'}
               </button>
             )}
           </div>
 
-          <div className="flex-col gap-sm">
-            {Array.isArray(tasks) ? tasks.map(task => (
-              <div key={task.id} className={`task-card ${task.status === 'claimed' ? 'completed' : ''}`}>
-                <div className="task-icon">{task.icon}</div>
-                <div className="task-info">
-                  <div className="task-title">{task.title}</div>
-                  <div className="task-reward">+{formatNumber(task.reward_value)} {task.reward_type}</div>
-                  {task.description && (
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{task.description}</div>
-                  )}
+          {/* Tasks List */}
+          {loading ? (
+            <div className="text-center" style={{ color: 'var(--text-secondary)', padding: '24px' }}>Loading tasks...</div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center" style={{ color: 'var(--text-secondary)', padding: '24px' }}>No tasks available yet.</div>
+          ) : (
+            <div className="flex-col gap-sm">
+              {tasks.map(task => (
+                <div key={task.id} className={`task-card ${task.status === 'claimed' ? 'completed' : ''}`}>
+                  <div className="task-icon">{task.icon || '📋'}</div>
+                  <div className="task-info">
+                    <div className="task-title">{task.title}</div>
+                    <div className="task-reward" style={{ color: 'var(--neon-green)', fontSize: '0.75rem' }}>
+                      +{task.reward_value || 0} {task.reward_type || 'reward'}
+                    </div>
+                    {task.description && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{task.description}</div>
+                    )}
+                  </div>
+                  <div className="task-action">
+                    <button 
+                      className={getButtonClass(task.status)}
+                      disabled={task.status === 'claimed' || processingTask === task.id}
+                      onClick={() => handleTaskAction(task)}
+                      style={task.status === 'claimed' ? { background: '#333', opacity: 0.6 } : {}}
+                    >
+                      {processingTask === task.id ? '...' : getButtonLabel(task.status)}
+                    </button>
+                  </div>
                 </div>
-                <div className="task-action">
-                  {task.status === 'claimed' ? (
-                    <button className="btn btn-sm" disabled style={{ background: '#333' }}>Done</button>
-                  ) : task.status === 'verified' ? (
-                    <button className="btn btn-primary btn-sm" disabled={processingTask === task.id} onClick={() => handleTaskAction(task)}>
-                      Claim
-                    </button>
-                  ) : task.status === 'verifying' ? (
-                    <button className="btn btn-outline btn-sm" disabled={processingTask === task.id} onClick={() => handleTaskAction(task)}>
-                      Verify
-                    </button>
-                  ) : (
-                    <button className="btn btn-outline btn-sm" disabled={processingTask === task.id} onClick={() => handleTaskAction(task)}>
-                      Go
-                    </button>
-                  )}
-                </div>
-              </div>
-            )) : (
-              <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>
-                No tasks available or failed to load.
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
       {activeTab === 'achievements' && (
         <div className="grid-2">
-          {achievements.map(achievement => (
-            <div key={achievement.id} className={`card ${achievement.unlocked ? 'card-gold' : ''}`} style={{ opacity: achievement.unlocked ? 1 : 0.5, textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{achievement.icon}</div>
+          {(achievements || []).map((achievement, i) => (
+            <div key={achievement.id || i} className={`card ${i === 0 ? 'card-gold' : ''}`} style={{ opacity: i === 0 ? 1 : 0.5, textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{achievement.icon || '🏆'}</div>
               <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{achievement.title}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{achievement.description}</div>
-              <div className="badge badge-gold">+{formatNumber(achievement.rewardVotes || achievement.reward_votes)}</div>
+              <div className="badge badge-gold">+{formatNumber(achievement.reward_votes || achievement.rewardVotes || 0)}</div>
             </div>
           ))}
         </div>
