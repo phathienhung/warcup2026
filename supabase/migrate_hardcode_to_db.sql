@@ -60,7 +60,17 @@ INSERT INTO nations (code, name, flag, "group", confederation, multiplier) VALUE
 ('CH', 'Switzerland', '🇨🇭', 'L', 'UEFA', 1)
 ON CONFLICT (code) DO UPDATE SET "group" = EXCLUDED."group", confederation = EXCLUDED.confederation;
 
--- 3. Add columns to shop_items table
+-- 3. Create shop_items table if not exists, then add extra columns
+CREATE TABLE IF NOT EXISTS shop_items (
+  id TEXT PRIMARY KEY,
+  type TEXT,
+  name TEXT,
+  description TEXT,
+  icon TEXT,
+  price BIGINT,
+  price_type TEXT,
+  bonus_value FLOAT
+);
 ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS max_purchases INT;
 
@@ -76,7 +86,22 @@ INSERT INTO shop_items (id, type, name, description, icon, price, price_type, bo
 ('8', 'spin_ticket', 'Spin Ticket x5', '5 Lucky Spin tickets (-20%)', '🎫', 4000, 'votes', 5)
 ON CONFLICT (id) DO NOTHING;
 
--- 5. Insert NFT templates with Supabase Storage image URLs
+-- 5. Create nft_templates table if not exists, then insert
+CREATE TABLE IF NOT EXISTS nft_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_name TEXT,
+  nation TEXT,
+  rarity TEXT,
+  mining_bonus INT DEFAULT 0,
+  vote_multiplier FLOAT DEFAULT 1.0,
+  reward_bonus FLOAT DEFAULT 0,
+  energy_bonus INT DEFAULT 0,
+  image_url TEXT,
+  total_supply INT,
+  minted_count INT DEFAULT 0,
+  price_votes BIGINT
+);
+
 INSERT INTO nft_templates (player_name, nation, rarity, image_url, total_supply, price_votes) VALUES
 ('Messi', 'AR', 'mythic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ar.png', 1000, 50000),
 ('Ronaldo', 'PT', 'mythic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/pt.png', 1000, 50000),

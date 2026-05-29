@@ -85,10 +85,12 @@ export const useGameStore = create((set, get) => ({
 
     try {
       const result = await api.tap(tapsToSync);
+      // Only sync votes from server. DO NOT overwrite energy here because
+      // the client regen timer has been adding energy while the sync was in-flight.
+      // Energy is authoritative on the client during a session.
       set({
         totalVotes: result.stats.totalVotes ?? get().totalVotes,
         availableVotes: result.stats.availableVotes ?? get().availableVotes,
-        energy: result.stats.energy ?? get().energy,
         isSyncing: false,
       });
     } catch (err) {

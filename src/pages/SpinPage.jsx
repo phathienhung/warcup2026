@@ -16,18 +16,22 @@ export default function SpinPage() {
     setResult(null);
     telegram.haptic.impact('light');
 
-    const targetSegmentIndex = Math.floor(Math.random() * segCount);
+    const target = Math.floor(Math.random() * segCount);
     const segmentAngle = 360 / segCount;
-    const spins = 5;
-    
-    const targetRotation = (spins * 360) + (targetSegmentIndex * segmentAngle) + (segmentAngle / 2);
-    const newRotation = rotation + targetRotation;
-    
-    setRotation(newRotation);
+    const offsetInSegment = segmentAngle * 0.15 + Math.random() * segmentAngle * 0.7;
+
+    // Same math as HomePage spin
+    const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
+    const currentRemainder = ((rotation % 360) + 360) % 360;
+    let delta = desiredRemainder - currentRemainder;
+    if (delta < 0) delta += 360;
+    const totalDelta = 5 * 360 + delta;
+
+    setRotation(prev => prev + totalDelta);
 
     setTimeout(() => {
       setSpinning(false);
-      setResult(segments[targetSegmentIndex]);
+      setResult(segments[target]);
       telegram.haptic.notification('success');
     }, 4000);
   };
