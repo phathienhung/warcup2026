@@ -51,6 +51,15 @@ export const useGameStore = create((set, get) => ({
     }
   },
 
+  async loadTasks() {
+    try {
+      const data = await api.getTasks();
+      set({ dailyTasks: data });
+    } catch (e) {
+      console.error('Failed to load tasks', e);
+    }
+  },
+
   // ── Tap Action ────────────────────────────────────
   tap(touchCount = 1) {
     const state = get();

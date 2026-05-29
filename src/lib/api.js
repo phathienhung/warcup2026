@@ -77,12 +77,17 @@ class ApiClient {
   }
 
   // ── Tasks ─────────────────────────────────────────
-  getTasks() {
+  async getTasks() {
     return this.get('/tasks');
   }
-
-  claimTask(taskId) {
-    return this.post('/tasks', { action: 'claim', taskId });
+  async claimTask(taskId) {
+    return this.post('/tasks', { action: 'claim_task', taskId });
+  }
+  async verifyTask(taskId) {
+    return this.post('/tasks', { action: 'verify', taskId });
+  }
+  async claimStreak() {
+    return this.post('/tasks', { action: 'claim_streak' });
   }
 
   // ── Leaderboard ───────────────────────────────────
