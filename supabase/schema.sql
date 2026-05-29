@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   total_taps BIGINT DEFAULT 0,
   founder_badge BOOLEAN DEFAULT FALSE,
+  ton_balance FLOAT DEFAULT 0,
+  mining_speed_bonus INT DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

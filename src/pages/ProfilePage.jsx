@@ -7,7 +7,7 @@ import ShareCard from '../components/ShareCard';
 import telegram from '../lib/telegram';
 
 export default function ProfilePage() {
-  const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount } = useUserStore();
+  const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount, telegramId } = useUserStore();
   const { tapCount } = useGameStore();
   const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends'
   
@@ -15,16 +15,17 @@ export default function ProfilePage() {
   const nationData = nations.find(n => n.code === favoriteNation) || NATIONS.find(n => n.code === favoriteNation);
   const initial = (firstName || username || 'P').charAt(0).toUpperCase();
 
+  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${telegramId || ''}`;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(referralCode || 'REF123');
+    navigator.clipboard.writeText(inviteLink);
     telegram.haptic.notification('success');
-    alert('Referral code copied!');
+    alert('Invite link copied!');
   };
 
   const handleInvite = () => {
-    const link = `https://t.me/WorldCupMiningBot?start=${referralCode || 'REF123'}`;
     const text = `Join World Cup Mining War 2026 and get a 5,000 vote bonus! ⚽🏆`;
-    telegram.shareUrl(link, text);
+    telegram.shareUrl(inviteLink, text);
   };
 
   // Live total taps calculation
@@ -70,7 +71,11 @@ export default function ProfilePage() {
             </div>
             <div className="profile-stat">
               <div className="profile-stat-value" style={{ color: 'var(--neon-green)' }}>{formatNumber(useGameStore.getState().availableVotes)}</div>
-              <div className="profile-stat-label">Balance</div>
+              <div className="profile-stat-label">Votes</div>
+            </div>
+            <div className="profile-stat">
+              <div className="profile-stat-value" style={{ color: '#00d4ff' }}>{useGameStore.getState().tonBalance || 0}</div>
+              <div className="profile-stat-label">TON</div>
             </div>
             <div className="profile-stat">
               <div className="profile-stat-value">{friendCount || 0}</div>
@@ -101,7 +106,7 @@ export default function ProfilePage() {
           </p>
           
           <div className="referral-code-box mb-md">
-            <div className="referral-code">{referralCode || 'REF123'}</div>
+            <div className="referral-code" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inviteLink}</div>
             <button className="copy-btn" onClick={handleCopy}>COPY</button>
           </div>
 

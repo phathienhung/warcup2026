@@ -5,6 +5,7 @@ export const useGameStore = create((set, get) => ({
   // ── Tap State ─────────────────────────────────────
   totalVotes: 0,
   availableVotes: 0,
+  tonBalance: 0,
   miningSpeed: 1,
   energy: 1000,
   maxEnergy: 1000,
@@ -45,14 +46,15 @@ export const useGameStore = create((set, get) => ({
   // ── Tap Action ────────────────────────────────────
   tap(touchCount = 1) {
     const state = get();
-    if (state.energy < touchCount) return { success: false, votes: 0 };
+    const energyCost = state.miningSpeed * touchCount;
+    if (state.energy < energyCost) return { success: false, votes: 0 };
 
     const votesEarned = state.miningSpeed * touchCount;
 
     set({
       totalVotes: state.totalVotes + votesEarned,
       availableVotes: state.availableVotes + votesEarned,
-      energy: Math.max(0, state.energy - touchCount),
+      energy: Math.max(0, state.energy - energyCost),
       tapCount: state.tapCount + touchCount,
       pendingTaps: state.pendingTaps + touchCount,
     });
@@ -108,6 +110,7 @@ export const useGameStore = create((set, get) => ({
     set({
       totalVotes: data.total_votes ?? 0,
       availableVotes: data.available_votes ?? 0,
+      tonBalance: data.ton_balance ?? 0,
       miningSpeed: data.mining_speed ?? 1,
       energy: data.energy ?? 1000,
       maxEnergy: data.max_energy ?? 1000,

@@ -66,6 +66,7 @@ export const useUserStore = create((set, get) => ({
         predictionsTotal: data.user.predictions_total || 0,
         totalTaps: data.user.total_taps || 0,
       });
+      set({ xpToNextLevel: get().getXpForLevel(data.user.level || 1) });
       return data;
     } catch (err) {
       console.error('[User] Auth failed:', err);

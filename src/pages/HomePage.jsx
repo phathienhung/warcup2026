@@ -141,7 +141,8 @@ function WalletModalContent() {
     }
     
     // For now, show a message. In production, replace with your project's TON wallet address.
-    alert(`To deposit ${depositAmount} TON, please send it to your in-game wallet. TonConnect integration requires a valid receiving address configured by the admin.`);
+    const inGameWallet = import.meta.env.VITE_IN_GAME_WALLET || 'UQANRLrMrxdOpOidj71SCe9Bgx6cNX6CcMEygRpxmkvEMt2K';
+    alert(`To deposit ${depositAmount} TON, please send it to your in-game wallet: ${inGameWallet}. TonConnect integration requires a valid receiving address configured by the admin.`);
   };
 
   const handleWithdraw = () => {
@@ -177,9 +178,19 @@ function WalletModalContent() {
 
       {/* Balance */}
       <div className="card mb-md text-center" style={{ background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)' }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>In-Game Balance</div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--neon-green)', fontFamily: 'var(--font-display)' }}>
-          {formatNumberFull(availableVotes)} Votes
+        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Votes Balance</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--neon-green)', fontFamily: 'var(--font-display)' }}>
+              {formatNumberFull(availableVotes)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>TON Balance</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00d4ff', fontFamily: 'var(--font-display)' }}>
+              {useGameStore.getState().tonBalance || 0}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -316,8 +327,9 @@ function SpinModalContent() {
                 >
                   <span style={{
                     position: 'absolute',
-                    left: '30px', // offset from center towards edge
-                    top: '-10px',
+                    left: 'calc(50% + 15px)', // offset from center towards edge. Wheel is 300px, radius 150px. Center of segment is at about 75px. 50% of 120px is 60px.
+                    top: '50%',
+                    transform: 'translateY(-50%)',
                     color: '#fff',
                     fontWeight: 'bold',
                     fontSize: '0.65rem',

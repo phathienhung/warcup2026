@@ -3,18 +3,18 @@ import useUserStore from '../store/userStore';
 import telegram from '../lib/telegram';
 
 export default function FriendsPage() {
-  const { referralCode, friendCount } = useUserStore();
+  const { referralCode, friendCount, telegramId } = useUserStore();
+  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${telegramId || ''}`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(referralCode || 'REF123');
+    navigator.clipboard.writeText(inviteLink);
     telegram.haptic.notification('success');
-    alert('Referral code copied!');
+    alert('Invite link copied!');
   };
 
   const handleInvite = () => {
-    const link = `https://t.me/WorldCupMiningBot?start=${referralCode || 'REF123'}`;
     const text = `Join World Cup Mining War 2026 and get a 5,000 vote bonus! ⚽🏆`;
-    telegram.shareUrl(link, text);
+    telegram.shareUrl(inviteLink, text);
   };
 
   return (
@@ -32,7 +32,7 @@ export default function FriendsPage() {
         </p>
         
         <div className="referral-code-box mb-md">
-          <div className="referral-code">{referralCode || 'REF123'}</div>
+          <div className="referral-code" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inviteLink}</div>
           <button className="copy-btn" onClick={handleCopy}>COPY</button>
         </div>
 

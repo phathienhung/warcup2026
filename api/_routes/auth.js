@@ -100,13 +100,14 @@ export default async function handler(req, res) {
       .eq('referrer_id', user.id);
 
     // Calculate mining speed
-    // Base 1 + friend bonus + level bonus + streak bonus
-    const computedSpeed = 1 + (friendCount || 0) + (dbUser.level - 1) + Math.floor(dbUser.login_streak / 7);
+    // Base 1 + friend bonus + level bonus + streak bonus + spin bonus
+    const computedSpeed = 1 + (friendCount || 0) + (dbUser.level - 1) + Math.floor(dbUser.login_streak / 7) + (dbUser.mining_speed_bonus || 0);
 
     res.status(200).json({
       user: {
         ...dbUser,
         mining_speed: computedSpeed,
+        ton_balance: dbUser.ton_balance || 0,
         friend_count: friendCount || 0
       }
     });

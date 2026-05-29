@@ -50,7 +50,7 @@ export default async function handler(req, res) {
           reward_amount: reward.reward
         });
         
-        return res.status(200).json({ success: true });
+        return res.status(200).json({ success: true, updated_bonus: updates.mining_speed_bonus });
       } catch (err) {
         console.error('Spin save error:', err);
         return res.status(500).json({ error: 'Internal server error' });
