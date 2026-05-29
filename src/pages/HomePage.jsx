@@ -7,7 +7,7 @@ import MiningSpeed from '../components/MiningSpeed';
 import ParticleEngine from '../components/ParticleEngine';
 import telegram from '../lib/telegram';
 import Modal from '../components/Modal';
-import { SPIN_SEGMENTS, formatNumberFull } from '../data/constants';
+import { formatNumberFull } from '../data/constants';
 import useUserStore from '../store/userStore';
 import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';

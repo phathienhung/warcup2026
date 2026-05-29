@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import useUserStore from '../store/userStore';
-import { NATIONS, getGroups } from '../data/countries';
+import useGameStore from '../store/gameStore';
+import { NATIONS } from '../data/countries';
 
 export default function ClanPage() {
   const { clanId, favoriteNation, selectNation } = useUserStore();
+  const storeNations = useGameStore(s => s.nations);
+  const allNations = storeNations && storeNations.length > 0 ? storeNations : NATIONS;
   const [selectedGroup, setSelectedGroup] = useState('A');
 
-  const groups = getGroups();
-  const nationsInGroup = NATIONS.filter(n => n.group === selectedGroup);
+  const groups = [...new Set(allNations.map(n => n.group))].sort();
+  const nationsInGroup = allNations.filter(n => n.group === selectedGroup);
 
   const handleSelectNation = (code) => {
     selectNation(code);

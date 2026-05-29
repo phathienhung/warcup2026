@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SPIN_SEGMENTS } from '../data/constants';
+import useGameStore from '../store/gameStore';
 import telegram from '../lib/telegram';
 
 export default function SpinPage() {
@@ -7,18 +7,19 @@ export default function SpinPage() {
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
 
+  const segments = useGameStore(s => s.spinSegments) || [];
+  const segCount = segments.length;
+
   const handleSpin = () => {
-    if (spinning) return;
+    if (spinning || segCount === 0) return;
     setSpinning(true);
     setResult(null);
     telegram.haptic.impact('light');
 
-    // Simulate random spin
-    const targetSegmentIndex = Math.floor(Math.random() * SPIN_SEGMENTS.length);
-    const segmentAngle = 360 / SPIN_SEGMENTS.length;
-    const spins = 5; // number of full rotations
+    const targetSegmentIndex = Math.floor(Math.random() * segCount);
+    const segmentAngle = 360 / segCount;
+    const spins = 5;
     
-    // Calculate final rotation to land on target segment (adjusting for pointer position)
     const targetRotation = (spins * 360) + (targetSegmentIndex * segmentAngle) + (segmentAngle / 2);
     const newRotation = rotation + targetRotation;
     
@@ -26,10 +27,12 @@ export default function SpinPage() {
 
     setTimeout(() => {
       setSpinning(false);
-      setResult(SPIN_SEGMENTS[targetSegmentIndex]);
+      setResult(segments[targetSegmentIndex]);
       telegram.haptic.notification('success');
     }, 4000);
   };
+
+  if (segCount === 0) return <div className="page"><div className="page-header"><h1 className="page-title">Lucky Spin</h1></div><div className="text-center mt-xl">Loading spin config...</div></div>;
 
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -45,12 +48,12 @@ export default function SpinPage() {
             className="spin-wheel"
             style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(${SPIN_SEGMENTS.map((s, i) => `${s.color} ${i * (100 / SPIN_SEGMENTS.length)}% ${(i + 1) * (100 / SPIN_SEGMENTS.length)}%`).join(', ')})`
+              background: `conic-gradient(from -90deg, ${segments.map((s, i) => `${s.color} ${i * (100 / segCount)}% ${(i + 1) * (100 / segCount)}%`).join(', ')})`
             }}
           >
-            {/* Draw text on wheel segments */}
-            {SPIN_SEGMENTS.map((segment, index) => {
-              const angle = (index * (360 / SPIN_SEGMENTS.length)) + ((360 / SPIN_SEGMENTS.length) / 2);
+            {segments.map((segment, index) => {
+              const segmentAngle = 360 / segCount;
+              const centerAngle = index * segmentAngle + segmentAngle / 2;
               return (
                 <div 
                   key={index}
@@ -58,17 +61,28 @@ export default function SpinPage() {
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    width: '50%',
+                    width: '120px',
+                    height: '1px',
                     transformOrigin: '0% 50%',
-                    transform: `translateY(-50%) rotate(${angle}deg)`,
-                    paddingLeft: '20px',
+                    transform: `rotate(${centerAngle - 90}deg)`,
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute',
+                    left: '75px',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
                     color: '#fff',
                     fontWeight: 'bold',
                     fontSize: '0.7rem',
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                  }}
-                >
-                  {segment.label}
+                    textAlign: 'center',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {segment.label}
+                  </span>
                 </div>
               );
             })}

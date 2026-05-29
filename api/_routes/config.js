@@ -12,6 +12,10 @@ export default async function handler(req, res) {
     try {
       const { data: config } = await supabase.from('game_config').select('*').single();
       const { data: nations } = await supabase.from('nations').select('*');
+      const { data: shop_items } = await supabase.from('shop_items').select('*');
+      const { data: nft_templates } = await supabase.from('nft_templates').select('*');
+      const { data: daily_tasks } = await supabase.from('daily_tasks').select('*');
+      const { data: achievements } = await supabase.from('achievements').select('*');
       
       // If config is not found in DB yet, provide defaults
       const defaultConfig = config || {
@@ -23,7 +27,14 @@ export default async function handler(req, res) {
         spin_segments_json: null
       };
       
-      return res.status(200).json({ config: defaultConfig, nations: nations || [] });
+      return res.status(200).json({ 
+        config: defaultConfig, 
+        nations: nations || [],
+        shop_items: shop_items || [],
+        nft_templates: nft_templates || [],
+        daily_tasks: daily_tasks || [],
+        achievements: achievements || []
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Internal server error' });

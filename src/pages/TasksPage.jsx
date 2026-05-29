@@ -1,21 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { DAILY_TASKS, ACHIEVEMENTS, formatNumber } from '../data/constants';
+import { formatNumber } from '../data/constants';
+import useGameStore from '../store/gameStore';
 import telegram from '../lib/telegram';
 
 export default function TasksPage() {
   const [activeTab, setActiveTab] = useState('daily');
-  const [tasks, setTasks] = useState(DAILY_TASKS.map(t => ({ ...t, progress: 0, completed: false })));
-  const [achievements, setAchievements] = useState(ACHIEVEMENTS.map(a => ({ ...a, unlocked: false })));
+  const { dailyTasks: dbTasks, achievements: dbAchievements } = useGameStore();
 
-  // Mock progress
+  const [tasks, setTasks] = useState([]);
+  const [achievements, setAchievements] = useState([]);
+
   useEffect(() => {
-    setTasks(prev => prev.map((t, i) => i === 0 ? { ...t, progress: t.target, completed: true } : t));
-    setAchievements(prev => prev.map((a, i) => i === 0 ? { ...a, unlocked: true } : a));
-  }, []);
+    if (dbTasks.length > 0) {
+      setTasks(dbTasks.map(t => ({ ...t, progress: 0, completed: false })));
+    }
+  }, [dbTasks]);
+
+  useEffect(() => {
+    if (dbAchievements.length > 0) {
+      setAchievements(dbAchievements.map(a => ({ ...a, unlocked: false })));
+    }
+  }, [dbAchievements]);
+
+  // Mock progress for first item
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setTasks(prev => prev.map((t, i) => i === 0 ? { ...t, progress: t.target, completed: true } : t));
+    }
+    if (achievements.length > 0) {
+      setAchievements(prev => prev.map((a, i) => i === 0 ? { ...a, unlocked: true } : a));
+    }
+  }, [dbTasks, dbAchievements]);
 
   const handleClaim = (taskId) => {
     telegram.haptic.notification('success');
-    // Call API to claim...
     alert(`Claimed reward for task ${taskId}!`);
   };
 
@@ -51,7 +69,7 @@ export default function TasksPage() {
                 <div className="task-icon">{task.icon}</div>
                 <div className="task-info">
                   <div className="task-title">{task.title}</div>
-                  <div className="task-reward">+{formatNumber(task.rewardVotes)} Votes | +{task.rewardXp} XP</div>
+                  <div className="task-reward">+{formatNumber(task.reward_votes)} Votes | +{task.reward_xp} XP</div>
                   <div className="progress-bar mt-sm" style={{ height: '4px' }}>
                     <div className="progress-bar-fill" style={{ width: `${(task.progress / task.target) * 100}%` }} />
                   </div>
@@ -76,7 +94,7 @@ export default function TasksPage() {
               <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{achievement.icon}</div>
               <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{achievement.title}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{achievement.description}</div>
-              <div className="badge badge-gold">+{formatNumber(achievement.rewardVotes)}</div>
+              <div className="badge badge-gold">+{formatNumber(achievement.reward_votes)}</div>
             </div>
           ))}
         </div>

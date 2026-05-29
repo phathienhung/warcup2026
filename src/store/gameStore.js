@@ -21,18 +21,26 @@ export const useGameStore = create((set, get) => ({
   energyRegenInterval: null,
   configBaseXp: 1000,
   spinSegments: null,
+  
+  shopItems: [],
+  nftTemplates: [],
+  dailyTasks: [],
+  achievements: [],
 
   async loadConfig() {
     try {
-      const { config, nations } = await api.get('/config');
-      // Only set config-level defaults. DO NOT overwrite energy/miningSpeed/maxEnergy
-      // because setGameState sets them from the user's actual DB values.
+      const res = await api.get('/config');
+      const { config, nations, shop_items, nft_templates, daily_tasks, achievements } = res;
       set({
         nations: nations || [],
-        energyRegenRateMs: config.energy_regen_rate_ms || 1000,
-        energyRegenAmount: config.energy_regen_amount || 1,
-        configBaseXp: config.base_xp_req || 1000,
-        spinSegments: config.spin_segments_json || null,
+        energyRegenRateMs: config?.energy_regen_rate_ms || 1000,
+        energyRegenAmount: config?.energy_regen_amount || 1,
+        configBaseXp: config?.base_xp_req || 1000,
+        spinSegments: config?.spin_segments_json || null,
+        shopItems: shop_items || [],
+        nftTemplates: nft_templates || [],
+        dailyTasks: daily_tasks || [],
+        achievements: achievements || [],
         configLoaded: true
       });
       // Restart regen with new rate

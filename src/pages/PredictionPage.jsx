@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { NATIONS } from '../data/countries';
+import useGameStore from '../store/gameStore';
 import Modal from '../components/Modal';
 import { formatNumber } from '../data/constants';
 import telegram from '../lib/telegram';
 
 // Helper to generate all group matches for 48 teams (12 groups)
-function generateMatches() {
+function generateMatches(allNations) {
   const matches = [];
   let matchId = 1;
-  const groups = [...new Set(NATIONS.map(n => n.group))].sort();
+  const groups = [...new Set(allNations.map(n => n.group))].sort();
   
   groups.forEach(g => {
-    const teams = NATIONS.filter(n => n.group === g);
+    const teams = allNations.filter(n => n.group === g);
     if (teams.length === 4) {
       // Round robin matches for 4 teams: 0v1, 2v3, 0v2, 1v3, 0v3, 1v2
       const pairs = [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]];
@@ -47,7 +48,9 @@ const SCORE_OPTIONS = [
 ];
 
 export default function PredictionPage() {
-  const matches = useMemo(() => generateMatches(), []);
+  const storeNations = useGameStore(s => s.nations);
+  const allNations = storeNations && storeNations.length > 0 ? storeNations : NATIONS;
+  const matches = useMemo(() => generateMatches(allNations), [allNations]);
   
   // Group matches by Group letter for UI
   const groupedMatches = useMemo(() => {
