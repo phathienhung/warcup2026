@@ -119,8 +119,8 @@ export default function PredictionPage() {
           const prediction = myPredictions[match.id];
           const showRoundHeader = index === 0 || array[index - 1].round !== match.round;
           const matchDate = new Date(match.date);
-          const dateStr = matchDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-          const timeStr = matchDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = matchDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+          const timeStr = matchDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           return (
             <React.Fragment key={match.id}>

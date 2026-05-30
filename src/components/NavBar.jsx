@@ -1,9 +1,12 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 
 export default function NavBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [tonConnectUI] = useTonConnectUI();
+  const address = useTonAddress();
 
   const tabs = [
     { id: '/', label: 'Mine', icon: '⚽' },
@@ -14,6 +17,14 @@ export default function NavBar() {
     { id: '/profile', label: 'Profile', icon: '👤' },
   ];
 
+  const handleTabClick = (tabId) => {
+    if (tabId === '/wallet' && !address) {
+      tonConnectUI.openModal();
+    } else {
+      navigate(tabId);
+    }
+  };
+
   return (
     <div className="nav-bar">
       {tabs.map((tab) => {
@@ -22,7 +33,7 @@ export default function NavBar() {
           <button
             key={tab.id}
             className={`nav-item ${isActive ? 'active' : ''}`}
-            onClick={() => navigate(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
           >
             <div className="nav-icon" style={{ position: 'relative' }}>
               {tab.icon}

@@ -151,6 +151,32 @@ export default function WalletPage() {
             onChange={(e) => setDepositAmount(e.target.value)}
           />
           <button className="btn btn-primary btn-full mt-sm" onClick={handleDeposit}>Deposit</button>
+          
+          {history.filter(tx => tx.tx_type === 'deposit').length > 0 && (
+            <div className="mt-md">
+              <h4 className="mb-sm" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Deposit History</h4>
+              <div className="leaderboard-list">
+                {history.filter(tx => tx.tx_type === 'deposit').map((tx) => (
+                  <div key={tx.id} className="leaderboard-item" style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', color: 'var(--neon-green)', textTransform: 'capitalize', fontSize: '0.9rem' }}>
+                        Deposit
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                        {new Date(tx.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{tx.amount_ton} TON</div>
+                      <div style={{ fontSize: '0.7rem', color: tx.status === 'completed' ? 'var(--neon-green)' : 'var(--gold)', textTransform: 'capitalize' }}>
+                        {tx.status}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Withdraw */}
@@ -165,36 +191,33 @@ export default function WalletPage() {
             onChange={(e) => setWithdrawAmount(e.target.value)}
           />
           <button className="btn btn-outline btn-full mt-sm" onClick={handleWithdraw}>Request Withdrawal</button>
-        </div>
 
-        <h3 className="section-title">Transaction History</h3>
-        {history.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📄</div>
-            <div className="empty-state-text">No recent transactions</div>
-          </div>
-        ) : (
-          <div className="leaderboard-list">
-            {history.map((tx) => (
-              <div key={tx.id} className="leaderboard-item" style={{ padding: '12px', borderRadius: '12px', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div>
-                  <div style={{ fontWeight: 'bold', color: tx.tx_type === 'deposit' ? 'var(--neon-green)' : 'var(--energy-red)', textTransform: 'capitalize' }}>
-                    {tx.tx_type}
+          {history.filter(tx => tx.tx_type === 'withdraw').length > 0 && (
+            <div className="mt-md">
+              <h4 className="mb-sm" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Withdraw History</h4>
+              <div className="leaderboard-list">
+                {history.filter(tx => tx.tx_type === 'withdraw').map((tx) => (
+                  <div key={tx.id} className="leaderboard-item" style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--glass-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', color: 'var(--energy-red)', textTransform: 'capitalize', fontSize: '0.9rem' }}>
+                        Withdraw
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                        {new Date(tx.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{tx.amount_ton} TON</div>
+                      <div style={{ fontSize: '0.7rem', color: tx.status === 'completed' ? 'var(--neon-green)' : 'var(--gold)', textTransform: 'capitalize' }}>
+                        {tx.status}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    {new Date(tx.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 'bold' }}>{tx.amount_ton} TON</div>
-                  <div style={{ fontSize: '0.75rem', color: tx.status === 'completed' ? 'var(--neon-green)' : 'var(--gold)', textTransform: 'capitalize' }}>
-                    {tx.status}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
