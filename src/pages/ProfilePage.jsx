@@ -127,6 +127,33 @@ export default function ProfilePage() {
             <div className="profile-stat">
               <div className="profile-stat-value">{useGameStore.getState().miningSpeed}</div>
               <div className="profile-stat-label">Speed</div>
+              {useGameStore.getState().miningSpeedMultiply > 0 && (
+                <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)', marginTop: '4px' }}>
+                  (base={useGameStore.getState().miningSpeedBase} + multiply={useGameStore.getState().miningSpeedMultiply})
+                </div>
+              )}
+            </div>
+            <div className="profile-stat">
+              <div className="profile-stat-value">{useGameStore.getState().energyRegenAmount}</div>
+              <div className="profile-stat-label">Regen</div>
+              {useGameStore.getState().energyRegenMultiply > 0 && (
+                <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)', marginTop: '4px' }}>
+                  (base={useGameStore.getState().energyRegenBase} + multiply={useGameStore.getState().energyRegenMultiply})
+                </div>
+              )}
+            </div>
+            <div className="profile-stat">
+              <div className="profile-stat-value">{useGameStore.getState().maxEnergy}</div>
+              <div className="profile-stat-label">Max Energy</div>
+              {useGameStore.getState().maxEnergyMultiply > 0 && (
+                <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)', marginTop: '4px' }}>
+                  (base={useGameStore.getState().maxEnergyBase} + multiply={useGameStore.getState().maxEnergyMultiply})
+                </div>
+              )}
+            </div>
+            <div className="profile-stat">
+              <div className="profile-stat-value">x{useGameStore.getState().rewardMultiplier?.toFixed(1) || '1.0'}</div>
+              <div className="profile-stat-label">Rewards</div>
             </div>
           </div>
 

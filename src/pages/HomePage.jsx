@@ -13,7 +13,7 @@ import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
-  const { totalVotes, energy, maxEnergy, miningSpeed, tap } = useGameStore();
+  const { totalVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, tap } = useGameStore();
   const [particles, setParticles] = useState([]);
   
   // Modals state
@@ -51,7 +51,7 @@ export default function HomePage() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
-        <MiningSpeed speed={miningSpeed} />
+        <MiningSpeed speed={miningSpeed} base={miningSpeedBase} multiply={miningSpeedMultiply} />
       </div>
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px', zIndex: 5 }}>
@@ -60,7 +60,7 @@ export default function HomePage() {
       </div>
 
       <div style={{ padding: '24px 0', width: '100%', zIndex: 5 }}>
-        <EnergyBar current={energy} max={maxEnergy} />
+        <EnergyBar current={energy} max={maxEnergy} base={useGameStore.getState().maxEnergyBase} multiply={useGameStore.getState().maxEnergyMultiply} />
       </div>
 
       <ParticleEngine particles={particles} setParticles={setParticles} />

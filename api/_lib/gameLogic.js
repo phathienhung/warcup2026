@@ -8,12 +8,28 @@ export function computeXpForNextLevel(currentLevel, baseXp = 1000) {
   return baseXp * (Math.pow(2, currentLevel) - 1);
 }
 
-export function computeSpeed(dbUser, friendCount = 0, nftMultiplier = 1.0) {
-  // Base 1 + friend bonus + level bonus + streak bonus + spin bonus
+export function computeStats(dbUser, friendCount = 0, nftMultiplier = 1.0) {
   const level = dbUser.level || 1;
   const streak = dbUser.login_streak || 1;
-  const bonus = dbUser.mining_speed_bonus || 0;
+  const speedBonus = dbUser.mining_speed_bonus || 0;
   
-  const baseSpeed = 1 + friendCount + (level - 1) + Math.floor(streak / 7) + bonus;
-  return Math.floor(baseSpeed * nftMultiplier);
+  // 1. Speed
+  const baseSpeed = 1 + friendCount + (level - 1) + Math.floor(streak / 7) + speedBonus;
+  const finalSpeed = Math.floor(baseSpeed * nftMultiplier);
+
+  // 2. Regen
+  const baseRegen = 1 + (dbUser.energy_regen_bonus || 0);
+  const finalRegen = Math.floor(baseRegen * nftMultiplier);
+
+  // 3. Max Energy
+  const baseMaxEnergy = dbUser.max_energy || 1000;
+  const finalMaxEnergy = Math.floor(baseMaxEnergy * nftMultiplier);
+
+  return {
+    speed: { final: finalSpeed, base: baseSpeed, multiply: finalSpeed - baseSpeed },
+    regen: { final: finalRegen, base: baseRegen, multiply: finalRegen - baseRegen },
+    maxEnergy: { final: finalMaxEnergy, base: baseMaxEnergy, multiply: finalMaxEnergy - baseMaxEnergy },
+    rewardMultiplier: nftMultiplier,
+    nftMultiplier
+  };
 }

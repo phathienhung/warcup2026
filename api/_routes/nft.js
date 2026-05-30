@@ -60,7 +60,8 @@ export default async function handler(req, res) {
         if (currentTon >= totalCost || currentTon > 0) {
           updates.ton_balance = Math.max(0, currentTon - totalCost);
         }
-        await supabase.from('users').update(updates).eq('telegram_id', user.id);
+        const { error: userUpdateError } = await supabase.from('users').update(updates).eq('telegram_id', user.id);
+        if (userUpdateError) throw userUpdateError;
         
         // Log purchase in shop_purchases
         await supabase.from('shop_purchases').insert({

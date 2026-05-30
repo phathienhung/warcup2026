@@ -1,6 +1,6 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
-import { computeSpeed, computeLevelFromXp } from '../_lib/gameLogic.js';
+import { computeStats, computeLevelFromXp } from '../_lib/gameLogic.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -55,18 +55,18 @@ export default async function handler(req, res) {
         });
       }
 
-      const speed = computeSpeed(dbUser, friendCount || 0, nftMultiplier);
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
+      const speed = stats.speed.final;
       
       // Calculate background energy regen since last interaction
       const now = new Date();
-      const lastLogin = new Date(dbUser.last_login || now);
-      const diffMs = now - lastLogin;
+      const lastInteraction = new Date(dbUser.last_login || now);
+      const diffMs = now - lastInteraction;
       const regenRateMs = 1000;
-      const regenMultiplier = 1 + (dbUser.energy_regen_bonus || 0);
-      const energyGained = Math.floor(diffMs / regenRateMs) * regenMultiplier;
-      const currentRegennedEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
-
-      const energyCost = count * speed;
+      const energyGained = Math.floor(diffMs / regenRateMs) * stats.regen.final;
+      
+      const currentRegennedEnergy = Math.min(stats.maxEnergy.final, (dbUser.energy || 0) + energyGained);
+      const energyCost = count * 1; // Assuming 1 energy per tap
       if (currentRegennedEnergy < energyCost) {
         return res.status(400).json({ error: 'Not enough energy', energy: currentRegennedEnergy });
       }

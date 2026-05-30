@@ -1,6 +1,6 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
-import { computeSpeed } from '../_lib/gameLogic.js';
+import { computeStats } from '../_lib/gameLogic.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -119,16 +119,24 @@ export default async function handler(req, res) {
     }
 
     // Calculate mining speed
-    const computedSpeed = computeSpeed(dbUser, friendCount || 0, nftMultiplier);
+    const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
 
-    res.status(200).json({
+    return res.status(200).json({ 
       user: {
         ...dbUser,
-        mining_speed: computedSpeed,
-        ton_balance: dbUser.ton_balance || 0,
+        mining_speed: stats.speed.final,
+        mining_speed_base: stats.speed.base,
+        mining_speed_multiply: stats.speed.multiply,
+        energy_regen_amount: stats.regen.final,
+        energy_regen_base: stats.regen.base,
+        energy_regen_multiply: stats.regen.multiply,
+        max_energy: stats.maxEnergy.final,
+        max_energy_base: stats.maxEnergy.base,
+        max_energy_multiply: stats.maxEnergy.multiply,
+        reward_multiplier: stats.rewardMultiplier,
         friend_count: friendCount || 0,
-        energy_regen_bonus: dbUser.energy_regen_bonus || 0
-      }
+        nft_count: dbUser.nft_count || 0
+      } 
     });
 
   } catch (error) {
