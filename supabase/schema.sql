@@ -252,41 +252,68 @@ ON CONFLICT (code) DO NOTHING;
 ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS max_purchases INT;
 INSERT INTO shop_items (id, type, name, description, icon, price, price_type, bonus_value) VALUES
-('1', 'vote_pack', 'Starter Pack', '1,000 Votes', '📦', 10, 'stars', 1000),
-('2', 'vote_pack', 'Pro Pack', '6,000 Votes (+20% bonus)', '💎', 50, 'stars', 6000),
-('3', 'vote_pack', 'Mega Pack', '15,000 Votes (+50% bonus)', '🏆', 100, 'stars', 15000),
-('4', 'energy', 'Energy Refill', 'Full energy refill', '⚡', 500, 'votes', 1000),
-('5', 'boost', 'Double Mining (1h)', '2x mining speed for 1 hour', '🚀', 2000, 'votes', 3600),
-('6', 'boost', 'Triple Mining (1h)', '3x mining speed for 1 hour', '💫', 20, 'stars', 3600),
-('7', 'spin_ticket', 'Spin Ticket x1', '1 Lucky Spin ticket', '🎟️', 1000, 'votes', 1),
-('8', 'spin_ticket', 'Spin Ticket x5', '5 Lucky Spin tickets (-20%)', '🎫', 4000, 'votes', 5)
+('1', 'vote_pack', 'Starter Pack', '1,000 Votes', '??', 10, 'stars', 1000),
+('2', 'vote_pack', 'Pro Pack', '6,000 Votes (+20% bonus)', '??', 50, 'stars', 6000),
+('3', 'vote_pack', 'Mega Pack', '15,000 Votes (+50% bonus)', '??', 100, 'stars', 15000),
+('4', 'energy', 'Energy Refill', 'Full energy refill', '?', 500, 'votes', 1000),
+('5', 'boost', 'Double Mining (1h)', '2x mining speed for 1 hour', '??', 2000, 'votes', 3600),
+('6', 'boost', 'Triple Mining (1h)', '3x mining speed for 1 hour', '??', 20, 'stars', 3600),
+('7', 'spin_ticket', 'Spin Ticket x1', '1 Lucky Spin ticket', '???', 1000, 'votes', 1),
+('8', 'spin_ticket', 'Spin Ticket x5', '5 Lucky Spin tickets (-20%)', '??', 4000, 'votes', 5)
 ON CONFLICT (id) DO NOTHING;
 
+
+DELETE FROM nft_templates;
 INSERT INTO nft_templates (player_name, nation, rarity, image_url, total_supply, price_votes) VALUES
-('Messi', 'AR', 'mythic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ar.png', 1000, 50000),
-('Ronaldo', 'PT', 'mythic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/pt.png', 1000, 50000),
-('Mbappé', 'FR', 'legendary', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/fr.png', 1000, 50000),
-('Neymar', 'BR', 'legendary', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/br.png', 1000, 50000),
-('Haaland', 'NO', 'legendary', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/no.png', 1000, 50000),
-('Vinicius Jr', 'BR', 'legendary', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/br.png', 1000, 50000),
-('Bellingham', 'GB', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/gb.png', 1000, 50000),
-('Pedri', 'ES', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/es.png', 1000, 50000),
-('Saka', 'GB', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/gb.png', 1000, 50000),
-('De Bruyne', 'BE', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/be.png', 1000, 50000),
-('Salah', 'EG', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/eg.png', 1000, 50000),
-('Son', 'KR', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/kr.png', 1000, 50000),
-('Pulisic', 'US', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/us.png', 1000, 50000),
-('Lautaro', 'AR', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ar.png', 1000, 50000),
-('Gavi', 'ES', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/es.png', 1000, 50000),
-('Yamal', 'ES', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/es.png', 1000, 50000),
-('Osimhen', 'NG', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ng.png', 1000, 50000),
-('Hakimi', 'MA', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ma.png', 1000, 50000),
-('Valverde', 'UY', 'rare', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/uy.png', 1000, 50000),
-('Rodri', 'ES', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/es.png', 1000, 50000),
-('Mané', 'SN', 'common', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/sn.png', 1000, 50000),
-('James', 'CO', 'common', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/co.png', 1000, 50000),
-('Davies', 'CA', 'common', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ca.png', 1000, 50000),
-('Doan', 'JP', 'common', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/jp.png', 1000, 50000);
+('Algeria', 'DZ', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/algeria.png', 1000, 50000),
+('Argentina', 'AR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/argentina.png', 1000, 50000),
+('Australia', 'AU', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/australia.png', 1000, 50000),
+('Austria', 'AT', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/austria.png', 1000, 50000),
+('Belgium', 'BE', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/belgium.png', 1000, 50000),
+('Bosnia', 'BA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/bosnia.png', 1000, 50000),
+('Brasil', 'BR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/brasil.png', 1000, 50000),
+('Caboverde', 'CV', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/caboverde.png', 1000, 50000),
+('Canada', 'CA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/canada.png', 1000, 50000),
+('Colombia', 'CO', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/colombia.png', 1000, 50000),
+('Congo', 'CD', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/congo.png', 1000, 50000),
+('Croatia', 'HR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/croatia.png', 1000, 50000),
+('Curacao', 'CW', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/curacao.png', 1000, 50000),
+('Czechia', 'CZ', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/czechia.png', 1000, 50000),
+('Ecuador', 'EC', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ecuador.png', 1000, 50000),
+('Egypt', 'EG', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/egypt.png', 1000, 50000),
+('England', 'GB', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/england.png', 1000, 50000),
+('France', 'FR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/france.png', 1000, 50000),
+('Germany', 'DE', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/germany.png', 1000, 50000),
+('Ghana', 'GH', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ghana.png', 1000, 50000),
+('Haiti', 'HT', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/haiti.png', 1000, 50000),
+('Iran', 'IR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/iran.png', 1000, 50000),
+('Iraq', 'IQ', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/iraq.png', 1000, 50000),
+('Ivorycoast', 'CI', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/ivorycoast.png', 1000, 50000),
+('Japan', 'JP', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/japan.png', 1000, 50000),
+('Jordan', 'JO', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/jordan.png', 1000, 50000),
+('Korea', 'KR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/korea.png', 1000, 50000),
+('Mexico', 'MX', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/mexico.png', 1000, 50000),
+('Morocco', 'MA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/morocco.png', 1000, 50000),
+('Netherlands', 'NL', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/netherlands.png', 1000, 50000),
+('Newzealand', 'NZ', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/newzealand.png', 1000, 50000),
+('Nigeria', 'NG', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/nigeria.png', 1000, 50000),
+('Norway', 'NO', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/norway.png', 1000, 50000),
+('Panama', 'PA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/panama.png', 1000, 50000),
+('Paraguay', 'PY', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/paraguay.png', 1000, 50000),
+('Portugal', 'PT', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/portugal.png', 1000, 50000),
+('Qatar', 'QA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/qatar.png', 1000, 50000),
+('Saudi', 'SA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/saudi.png', 1000, 50000),
+('Scotland', 'SC', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/scotland.png', 1000, 50000),
+('Senegal', 'SN', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/senegal.png', 1000, 50000),
+('Southafrica', 'ZA', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/southafrica.png', 1000, 50000),
+('Spain', 'ES', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/spain.png', 1000, 50000),
+('Sweden', 'SE', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/sweden.png', 1000, 50000),
+('Switzerland', 'CH', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/switzerland.png', 1000, 50000),
+('Tunisia', 'TN', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/tunisia.png', 1000, 50000),
+('Turkey', 'TR', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/turkey.png', 1000, 50000),
+('Uruguay', 'UY', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/uruguay.png', 1000, 50000),
+('Usa', 'US', 'epic', 'https://lzckrpviyogydxfhcuyp.supabase.co/storage/v1/object/public/warcup2026_players/usa.png', 1000, 50000);
+
 
 CREATE TABLE IF NOT EXISTS daily_tasks (id TEXT PRIMARY KEY, title TEXT, type TEXT, target INT, reward_votes INT, reward_xp INT, icon TEXT);
 INSERT INTO daily_tasks (id, title, type, target, reward_votes, reward_xp, icon) VALUES
@@ -318,4 +345,5 @@ INSERT INTO achievements (id, title, description, icon, reward_votes) VALUES
 ('clan_join', 'Team Player', 'Join a clan', '🤝', 500),
 ('founder', 'Founder', 'Joined during pre-season', '🏅', 10000)
 ON CONFLICT (id) DO NOTHING;
+
 
