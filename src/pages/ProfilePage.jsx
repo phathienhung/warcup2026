@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useUserStore from '../store/userStore';
+import api from '../lib/api';
 import useGameStore from '../store/gameStore';
 import { formatNumber } from '../data/constants';
 import { NATIONS } from '../data/countries';
@@ -9,9 +10,29 @@ import telegram from '../lib/telegram';
 export default function ProfilePage() {
   const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount, telegramId } = useUserStore();
   const { tapCount } = useGameStore();
-  const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends'
+  const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends' | 'nfts'
+  const [myNfts, setMyNfts] = useState([]);
+  const [loadingNfts, setLoadingNfts] = useState(false);
   
   const nations = useGameStore(s => s.nations) || [];
+
+  useEffect(() => {
+    if (activeTab === 'nfts') {
+      loadNfts();
+    }
+  }, [activeTab]);
+
+  const loadNfts = async () => {
+    setLoadingNfts(true);
+    try {
+      const data = await api.getMyNFTs();
+      setMyNfts(data || []);
+    } catch (err) {
+      console.error('Failed to load NFTs', err);
+    } finally {
+      setLoadingNfts(false);
+    }
+  };
   const nationData = nations.find(n => n.code === favoriteNation) || NATIONS.find(n => n.code === favoriteNation);
   const initial = (firstName || username || 'P').charAt(0).toUpperCase();
 
@@ -50,6 +71,7 @@ export default function ProfilePage() {
       <div className="tabs mb-md">
         <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>My Stats</button>
         <button className={`tab ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>Friends</button>
+        <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>NFTs</button>
       </div>
 
       {activeTab === 'stats' && (
@@ -133,6 +155,44 @@ export default function ProfilePage() {
                 <span>Total Bonus Earned:</span>
                 <span style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>+{friendCount} Speed</span>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'nfts' && (
+        <div className="flex-col gap-sm">
+          <h3 className="section-title text-left">My NFT Collection</h3>
+          {loadingNfts ? (
+            <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>Loading NFTs...</div>
+          ) : myNfts.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">🖼️</div>
+              <div className="empty-state-text">You don't have any NFTs yet. Go to Shop to collect some!</div>
+            </div>
+          ) : (
+            <div className="grid-2">
+              {myNfts.map((nft) => {
+                const player = nft.nft_templates || {};
+                return (
+                  <div key={nft.id} className={`nft-card nft-rarity-${player.rarity}`}>
+                    <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {player.image_url ? (
+                        <img src={player.image_url} alt={player.player_name} style={{ width: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: '3rem' }}>👤</span>
+                      )}
+                    </div>
+                    <div className="nft-card-body">
+                      <div className="nft-card-name">{player.player_name}</div>
+                      <div className="nft-card-rarity">{player.rarity}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Mint #{nft.mint_number || '1'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

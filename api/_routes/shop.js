@@ -20,6 +20,18 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
+    const action = req.query.action;
+    if (action === 'history') {
+      const { data, error } = await supabase
+        .from('shop_purchases')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data);
+    }
+    
     return res.status(200).json(SHOP_ITEMS); 
   }
 
@@ -28,7 +40,7 @@ export default async function handler(req, res) {
     
     if (action === 'buy') {
       try {
-        const item = SHOP_ITEMS.find(i => i.id === itemId);
+        const item = SHOP_ITEMS.find(i => String(i.id) === String(itemId));
         if (!item) return res.status(404).json({ error: 'Item not found' });
         
         // For stars/ton, we just simulate success here for now,

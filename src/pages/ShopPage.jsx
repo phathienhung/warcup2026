@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
 import telegram from '../lib/telegram';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
@@ -7,10 +7,30 @@ import useUserStore from '../store/userStore';
 import api from '../lib/api';
 
 export default function ShopPage() {
-  const [activeTab, setActiveTab] = useState('boosts'); // 'boosts' | 'nfts'
+  const [activeTab, setActiveTab] = useState('boosts'); // 'boosts' | 'nfts' | 'history'
   const [selectedItem, setSelectedItem] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [tonConnectUI] = useTonConnectUI();
   const { shopItems, nftTemplates } = useGameStore();
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistory();
+    }
+  }, [activeTab]);
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await api.getShopHistory();
+      setHistory(data || []);
+    } catch (err) {
+      console.error('Failed to load shop history', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const refreshUserStats = async () => {
     try {
@@ -74,7 +94,8 @@ export default function ShopPage() {
 
       <div className="tabs mb-md">
         <button className={`tab ${activeTab === 'boosts' ? 'active' : ''}`} onClick={() => setActiveTab('boosts')}>Boosts</button>
-        <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>Chibi Collectibles</button>
+        <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>NFT Collectibles</button>
+        <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History</button>
       </div>
 
       {activeTab === 'boosts' && (
@@ -97,7 +118,7 @@ export default function ShopPage() {
       {activeTab === 'nfts' && (
         <div className="grid-2">
           {nftTemplates.map((player) => (
-            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ name: player.player_name, icon: '👤', image_url: player.image_url, description: `Chibi Collectible of ${player.player_name}`, price: player.price_votes, priceType: 'votes' })}>
+            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes, priceType: 'votes' })}>
               <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {player.image_url ? (
                   <img src={player.image_url} alt={player.player_name} style={{ width: '100%', objectFit: 'contain' }} />
@@ -112,6 +133,30 @@ export default function ShopPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="flex-col gap-sm">
+          {loadingHistory ? (
+            <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>Loading history...</div>
+          ) : history.length === 0 ? (
+            <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>No purchases yet.</div>
+          ) : (
+            history.map((record) => (
+              <div key={record.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Item #{record.item_id} ({record.item_type})</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                    {new Date(record.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="badge badge-gold">
+                  -{record.price_paid} {record.price_type}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

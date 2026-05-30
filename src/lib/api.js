@@ -116,6 +116,10 @@ class ApiClient {
     return this.get('/shop');
   }
 
+  getShopHistory() {
+    return this.get('/shop?action=history');
+  }
+
   buyItem(itemId, quantity = 1) {
     return this.post('/shop', { action: 'buy', itemId, quantity });
   }
