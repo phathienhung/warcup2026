@@ -13,12 +13,28 @@ export default function ShopPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [tonConnectUI] = useTonConnectUI();
   const { shopItems, nftTemplates, tonBalance } = useGameStore();
+  const [myNfts, setMyNfts] = useState([]);
+  const [loadingNfts, setLoadingNfts] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'history') {
       loadHistory();
+    } else if (activeTab === 'nfts') {
+      loadMyNfts();
     }
   }, [activeTab]);
+
+  const loadMyNfts = async () => {
+    setLoadingNfts(true);
+    try {
+      const data = await api.getMyNFTs();
+      setMyNfts(data || []);
+    } catch (err) {
+      console.error('Failed to load my NFTs', err);
+    } finally {
+      setLoadingNfts(false);
+    }
+  };
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -141,7 +157,9 @@ export default function ShopPage() {
 
       {activeTab === 'nfts' && (
         <div className="grid-2">
-          {nftTemplates.map((player) => (
+          {loadingNfts ? (
+            <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+          ) : nftTemplates.filter(player => !myNfts.some(n => n.nft_template_id === player.id)).map((player) => (
             <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ id: player.id, type: 'nft', name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes || 1.5, priceType: 'ton' })}>
               <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {player.image_url ? (

@@ -55,7 +55,10 @@ class ApiClient {
 
   // ── Auth ──────────────────────────────────────────
   auth() {
-    return this.post('/auth', { initData: telegram.initData });
+    return this.post('/auth', { 
+      initData: telegram.initData,
+      start_param: telegram.startParam 
+    });
   }
 
   // ── User ──────────────────────────────────────────

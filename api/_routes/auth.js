@@ -101,8 +101,23 @@ export default async function handler(req, res) {
       .select('*', { count: 'exact', head: true })
       .eq('referrer_id', user.id);
 
+    // Get NFT multiplier
+    const { data: userNfts } = await supabase
+      .from('user_nfts')
+      .select('nft_templates(vote_multiplier)')
+      .eq('user_id', user.id);
+      
+    let nftMultiplier = 1.0;
+    if (userNfts) {
+      userNfts.forEach(n => {
+        if (n.nft_templates && typeof n.nft_templates.vote_multiplier === 'number') {
+          nftMultiplier += (n.nft_templates.vote_multiplier - 1.0);
+        }
+      });
+    }
+
     // Calculate mining speed
-    const computedSpeed = computeSpeed(dbUser, friendCount || 0);
+    const computedSpeed = computeSpeed(dbUser, friendCount || 0, nftMultiplier);
 
     res.status(200).json({
       user: {
