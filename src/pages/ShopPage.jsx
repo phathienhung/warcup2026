@@ -46,7 +46,7 @@ export default function ShopPage() {
   const handleBuy = async () => {
     if (!selectedItem) return;
     
-    if (selectedItem.priceType === 'ton') {
+    if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
       try {
         const transaction = {
           validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
