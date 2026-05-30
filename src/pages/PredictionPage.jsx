@@ -2,38 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { NATIONS } from '../data/countries';
 import useGameStore from '../store/gameStore';
 import Modal from '../components/Modal';
+import CountdownTimer from '../components/CountdownTimer';
 import { formatNumber } from '../data/constants';
+import { SCHEDULED_MATCHES } from '../data/matches';
 import telegram from '../lib/telegram';
 
-// Helper to generate all group matches for 48 teams (12 groups)
-function generateMatches(allNations) {
-  const matches = [];
-  let matchId = 1;
-  const groups = [...new Set(allNations.map(n => n.group))].sort();
-  
-  groups.forEach(g => {
-    const teams = allNations.filter(n => n.group === g);
-    if (teams.length === 4) {
-      // Round robin matches for 4 teams: 0v1, 2v3, 0v2, 1v3, 0v3, 1v2
-      const pairs = [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]];
-      pairs.forEach(([i, j], idx) => {
-        matches.push({
-          id: matchId++,
-          teamA: teams[i],
-          teamB: teams[j],
-          stage: `Group ${g}`,
-          // Mock pool data
-          poolA: Math.floor(Math.random() * 50000) + 10000,
-          poolB: Math.floor(Math.random() * 50000) + 10000,
-          poolDraw: Math.floor(Math.random() * 20000) + 5000,
-          // Mock date during the tournament
-          date: new Date(Date.now() + (matchId * 1000 * 60 * 60 * 12)).toISOString()
-        });
-      });
-    }
-  });
-  return matches;
-}
 
 const SCORE_OPTIONS = [
   { label: '1-0', mult: 5.0 },
@@ -50,7 +23,22 @@ const SCORE_OPTIONS = [
 export default function PredictionPage() {
   const storeNations = useGameStore(s => s.nations);
   const allNations = storeNations && storeNations.length > 0 ? storeNations : NATIONS;
-  const matches = useMemo(() => generateMatches(allNations), [allNations]);
+  
+  const matches = useMemo(() => {
+    return SCHEDULED_MATCHES.map(m => {
+      const tA = allNations.find(n => n.code === m.teamA) || { code: m.teamA, name: m.teamA, flag: '🏳️' };
+      const tB = allNations.find(n => n.code === m.teamB) || { code: m.teamB, name: m.teamB, flag: '🏳️' };
+      return {
+        ...m,
+        teamA: tA,
+        teamB: tB,
+        // mock pools
+        poolA: Math.floor(Math.random() * 50000) + 10000,
+        poolB: Math.floor(Math.random() * 50000) + 10000,
+        poolDraw: Math.floor(Math.random() * 20000) + 5000,
+      };
+    });
+  }, [allNations]);
   
   // Group matches by Group letter for UI
   const groupedMatches = useMemo(() => {
@@ -62,7 +50,7 @@ export default function PredictionPage() {
     return obj;
   }, [matches]);
 
-  const [selectedGroup, setSelectedGroup] = useState('Group A');
+  const [selectedGroup, setSelectedGroup] = useState('Bảng A');
   const [selectedMatch, setSelectedMatch] = useState(null);
   
   // Modal state
@@ -127,14 +115,29 @@ export default function PredictionPage() {
       </div>
 
       <div className="matches-list">
-        {groupedMatches[selectedGroup]?.map(match => {
+        {groupedMatches[selectedGroup]?.map((match, index, array) => {
           const prediction = myPredictions[match.id];
+          const showRoundHeader = index === 0 || array[index - 1].round !== match.round;
+          const matchDate = new Date(match.date);
+          const dateStr = matchDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+          const timeStr = matchDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
           return (
-            <div key={match.id} className="match-card mb-md" onClick={() => handleOpenModal(match)} style={{ cursor: 'pointer' }}>
-              <div className="match-teams">
-                <div className="match-team">
-                  <div className="match-team-flag">{match.teamA.flag}</div>
-                  <div className="match-team-name">{match.teamA.name}</div>
+            <React.Fragment key={match.id}>
+              {showRoundHeader && (
+                <div className="round-header" style={{ margin: '16px 0 8px', color: 'var(--neon-green)', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+                  Vòng bảng - {match.round}
+                </div>
+              )}
+              <div className="match-card mb-md" onClick={() => handleOpenModal(match)} style={{ cursor: 'pointer' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <div>{timeStr} - {dateStr}</div>
+                  <CountdownTimer targetDate={match.date} />
+                </div>
+                <div className="match-teams">
+                  <div className="match-team">
+                    <div className="match-team-flag">{match.teamA.flag}</div>
+                    <div className="match-team-name">{match.teamA.name}</div>
                   {prediction && prediction.outcome === 'A' && (
                     <div className="badge badge-green mt-sm">Staked: {formatNumber(prediction.stake)}</div>
                   )}
@@ -162,6 +165,7 @@ export default function PredictionPage() {
                 </div>
               )}
             </div>
+            </React.Fragment>
           );
         })}
       </div>
