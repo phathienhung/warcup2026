@@ -55,11 +55,36 @@ export default async function handler(req, res) {
         newStreak = 1;
       }
 
+      // Get friend count for mining speed calculation
+      const { count: friendCount } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', user.id);
+
+      // Get NFT multiplier
+      const { data: userNfts } = await supabase
+        .from('user_nfts')
+        .select('nft_templates(vote_multiplier)')
+        .eq('user_id', user.id);
+        
+      let nftMultiplier = 1.0;
+      if (userNfts) {
+        userNfts.forEach(n => {
+          let template = n.nft_templates;
+          if (Array.isArray(template)) template = template[0];
+          const mult = Number(template?.vote_multiplier);
+          if (!isNaN(mult) && mult > 0) {
+            nftMultiplier += (mult - 1.0);
+          }
+        });
+      }
+
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
+
       // Offline energy regen
       const regenRateMs = 1000;
-      const regenMultiplier = 1 + (dbUser.energy_regen_bonus || 0);
-      const energyGained = Math.floor(diffMs / regenRateMs) * regenMultiplier;
-      const newEnergy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + energyGained);
+      const energyGained = Math.floor(diffMs / regenRateMs) * stats.regen.final;
+      const newEnergy = Math.min(stats.maxEnergy.final, (dbUser.energy || 0) + energyGained);
 
       await supabase
         .from('users')
@@ -73,6 +98,11 @@ export default async function handler(req, res) {
         
       dbUser.login_streak = newStreak;
       dbUser.energy = newEnergy;
+      
+      // Store computed stats temporarily to avoid recomputing below
+      dbUser._stats = stats;
+      dbUser._friendCount = friendCount;
+      dbUser._nftMultiplier = nftMultiplier;
     }
 
     // Process referral if exists and user has no referrer yet
@@ -94,32 +124,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // Get friend count for mining speed calculation
-    const { count: friendCount } = await supabase
-      .from('referrals')
-      .select('*', { count: 'exact', head: true })
-      .eq('referrer_id', user.id);
-
-    // Get NFT multiplier
-    const { data: userNfts } = await supabase
-      .from('user_nfts')
-      .select('nft_templates(vote_multiplier)')
-      .eq('user_id', user.id);
-      
-    let nftMultiplier = 1.0;
-    if (userNfts) {
-      userNfts.forEach(n => {
-        let template = n.nft_templates;
-        if (Array.isArray(template)) template = template[0];
-        const mult = Number(template?.vote_multiplier);
-        if (!isNaN(mult) && mult > 0) {
-          nftMultiplier += (mult - 1.0);
-        }
-      });
-    }
-
-    // Calculate mining speed
-    const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
+    // Calculate mining speed (use cached stats if available)
+    const friendCount = dbUser._friendCount || 0;
+    const nftMultiplier = dbUser._nftMultiplier || 1.0;
+    const stats = dbUser._stats || computeStats(dbUser, friendCount, nftMultiplier);
 
     return res.status(200).json({ 
       user: {
