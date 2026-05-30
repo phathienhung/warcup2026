@@ -1,112 +1,111 @@
 /**
  * FIFA World Cup 2026 — Participating Nations
  * 48 teams across 12 groups (Groups A–L)
+ * Source: https://www.24h.com.vn/bong-da/lich-thi-dau-bong-da-world-cup-2026-moi-nhat-c48a1747402.html
  */
 
 export const NATIONS = [
   // Group A
-  { code: 'FR', name: 'France', flag: '🇫🇷', group: 'A', confederation: 'UEFA' },
-  { code: 'PL', name: 'Poland', flag: '🇵🇱', group: 'A', confederation: 'UEFA' },
-  { code: 'US', name: 'United States', flag: '🇺🇸', group: 'A', confederation: 'CONCACAF' },
-  { code: 'UZ', name: 'Uzbekistan', flag: '🇺🇿', group: 'A', confederation: 'AFC' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽', group: 'A', confederation: 'CONCACAF' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦', group: 'A', confederation: 'CAF' },
+  { code: 'KR', name: 'South Korea', flag: '🇰🇷', group: 'A', confederation: 'AFC' },
+  { code: 'CZ', name: 'Czech Republic', flag: '🇨🇿', group: 'A', confederation: 'UEFA' },
 
   // Group B
-  { code: 'GB', name: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', group: 'B', confederation: 'UEFA' },
-  { code: 'SE', name: 'Sweden', flag: '🇸🇪', group: 'B', confederation: 'UEFA' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽', group: 'B', confederation: 'CONCACAF' },
-  { code: 'DZ', name: 'Algeria', flag: '🇩🇿', group: 'B', confederation: 'CAF' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦', group: 'B', confederation: 'CONCACAF' },
+  { code: 'BA', name: 'Bosnia', flag: '🇧🇦', group: 'B', confederation: 'UEFA' },
+  { code: 'QA', name: 'Qatar', flag: '🇶🇦', group: 'B', confederation: 'AFC' },
+  { code: 'CH', name: 'Switzerland', flag: '🇨🇭', group: 'B', confederation: 'UEFA' },
 
   // Group C
-  { code: 'ES', name: 'Spain', flag: '🇪🇸', group: 'C', confederation: 'UEFA' },
-  { code: 'UA', name: 'Ukraine', flag: '🇺🇦', group: 'C', confederation: 'UEFA' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦', group: 'C', confederation: 'CONCACAF' },
-  { code: 'PE', name: 'Peru', flag: '🇵🇪', group: 'C', confederation: 'CONMEBOL' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷', group: 'C', confederation: 'CONMEBOL' },
+  { code: 'MA', name: 'Morocco', flag: '🇲🇦', group: 'C', confederation: 'CAF' },
+  { code: 'HT', name: 'Haiti', flag: '🇭🇹', group: 'C', confederation: 'CONCACAF' },
+  { code: 'SC', name: 'Scotland', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', group: 'C', confederation: 'UEFA' },
 
   // Group D
-  { code: 'DE', name: 'Germany', flag: '🇩🇪', group: 'D', confederation: 'UEFA' },
-  { code: 'RS', name: 'Serbia', flag: '🇷🇸', group: 'D', confederation: 'UEFA' },
-  { code: 'AR', name: 'Argentina', flag: '🇦🇷', group: 'D', confederation: 'CONMEBOL' },
-  { code: 'CI', name: 'Ivory Coast', flag: '🇨🇮', group: 'D', confederation: 'CAF' },
+  { code: 'US', name: 'United States', flag: '🇺🇸', group: 'D', confederation: 'CONCACAF' },
+  { code: 'PY', name: 'Paraguay', flag: '🇵🇾', group: 'D', confederation: 'CONMEBOL' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺', group: 'D', confederation: 'AFC' },
+  { code: 'TR', name: 'Turkey', flag: '🇹🇷', group: 'D', confederation: 'UEFA' },
 
   // Group E
-  { code: 'PT', name: 'Portugal', flag: '🇵🇹', group: 'E', confederation: 'UEFA' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷', group: 'E', confederation: 'CONMEBOL' },
-  { code: 'ML', name: 'Mali', flag: '🇲🇱', group: 'E', confederation: 'CAF' },
-  { code: 'IQ', name: 'Iraq', flag: '🇮🇶', group: 'E', confederation: 'AFC' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪', group: 'E', confederation: 'UEFA' },
+  { code: 'CW', name: 'Curacao', flag: '🇨🇼', group: 'E', confederation: 'CONCACAF' },
+  { code: 'CI', name: 'Ivory Coast', flag: '🇨🇮', group: 'E', confederation: 'CAF' },
+  { code: 'EC', name: 'Ecuador', flag: '🇪🇨', group: 'E', confederation: 'CONMEBOL' },
 
   // Group F
   { code: 'NL', name: 'Netherlands', flag: '🇳🇱', group: 'F', confederation: 'UEFA' },
-  { code: 'UY', name: 'Uruguay', flag: '🇺🇾', group: 'F', confederation: 'CONMEBOL' },
-  { code: 'ZA', name: 'South Africa', flag: '🇿🇦', group: 'F', confederation: 'CAF' },
-  { code: 'QA', name: 'Qatar', flag: '🇶🇦', group: 'F', confederation: 'AFC' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵', group: 'F', confederation: 'AFC' },
+  { code: 'SE', name: 'Sweden', flag: '🇸🇪', group: 'F', confederation: 'UEFA' },
+  { code: 'TN', name: 'Tunisia', flag: '🇹🇳', group: 'F', confederation: 'CAF' },
 
   // Group G
-  { code: 'IT', name: 'Italy', flag: '🇮🇹', group: 'G', confederation: 'UEFA' },
-  { code: 'CO', name: 'Colombia', flag: '🇨🇴', group: 'G', confederation: 'CONMEBOL' },
-  { code: 'CM', name: 'Cameroon', flag: '🇨🇲', group: 'G', confederation: 'CAF' },
-  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', group: 'G', confederation: 'AFC' },
+  { code: 'BE', name: 'Belgium', flag: '🇧🇪', group: 'G', confederation: 'UEFA' },
+  { code: 'EG', name: 'Egypt', flag: '🇪🇬', group: 'G', confederation: 'CAF' },
+  { code: 'IR', name: 'Iran', flag: '🇮🇷', group: 'G', confederation: 'AFC' },
+  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿', group: 'G', confederation: 'OFC' },
 
   // Group H
-  { code: 'BE', name: 'Belgium', flag: '🇧🇪', group: 'H', confederation: 'UEFA' },
-  { code: 'EC', name: 'Ecuador', flag: '🇪🇨', group: 'H', confederation: 'CONMEBOL' },
-  { code: 'TN', name: 'Tunisia', flag: '🇹🇳', group: 'H', confederation: 'CAF' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺', group: 'H', confederation: 'AFC' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸', group: 'H', confederation: 'UEFA' },
+  { code: 'CV', name: 'Cabo Verde', flag: '🇨🇻', group: 'H', confederation: 'CAF' },
+  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', group: 'H', confederation: 'AFC' },
+  { code: 'UY', name: 'Uruguay', flag: '🇺🇾', group: 'H', confederation: 'CONMEBOL' },
 
   // Group I
-  { code: 'HR', name: 'Croatia', flag: '🇭🇷', group: 'I', confederation: 'UEFA' },
-  { code: 'VE', name: 'Venezuela', flag: '🇻🇪', group: 'I', confederation: 'CONMEBOL' },
-  { code: 'EG', name: 'Egypt', flag: '🇪🇬', group: 'I', confederation: 'CAF' },
-  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿', group: 'I', confederation: 'OFC' },
+  { code: 'FR', name: 'France', flag: '🇫🇷', group: 'I', confederation: 'UEFA' },
+  { code: 'SN', name: 'Senegal', flag: '🇸🇳', group: 'I', confederation: 'CAF' },
+  { code: 'IQ', name: 'Iraq', flag: '🇮🇶', group: 'I', confederation: 'AFC' },
+  { code: 'NO', name: 'Norway', flag: '🇳🇴', group: 'I', confederation: 'UEFA' },
 
   // Group J
-  { code: 'CH', name: 'Switzerland', flag: '🇨🇭', group: 'J', confederation: 'UEFA' },
-  { code: 'PA', name: 'Panama', flag: '🇵🇦', group: 'J', confederation: 'CONCACAF' },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬', group: 'J', confederation: 'CAF' },
-  { code: 'KR', name: 'South Korea', flag: '🇰🇷', group: 'J', confederation: 'AFC' },
+  { code: 'AR', name: 'Argentina', flag: '🇦🇷', group: 'J', confederation: 'CONMEBOL' },
+  { code: 'AT', name: 'Austria', flag: '🇦🇹', group: 'J', confederation: 'UEFA' },
+  { code: 'JO', name: 'Jordan', flag: '🇯🇴', group: 'J', confederation: 'AFC' },
+  { code: 'DZ', name: 'Algeria', flag: '🇩🇿', group: 'J', confederation: 'CAF' },
 
   // Group K
-  { code: 'DK', name: 'Denmark', flag: '🇩🇰', group: 'K', confederation: 'UEFA' },
-  { code: 'CR', name: 'Costa Rica', flag: '🇨🇷', group: 'K', confederation: 'CONCACAF' },
-  { code: 'SN', name: 'Senegal', flag: '🇸🇳', group: 'K', confederation: 'CAF' },
-  { code: 'IR', name: 'Iran', flag: '🇮🇷', group: 'K', confederation: 'AFC' },
+  { code: 'PT', name: 'Portugal', flag: '🇵🇹', group: 'K', confederation: 'UEFA' },
+  { code: 'CD', name: 'DR Congo', flag: '🇨🇩', group: 'K', confederation: 'CAF' },
+  { code: 'UZ', name: 'Uzbekistan', flag: '🇺🇿', group: 'K', confederation: 'AFC' },
+  { code: 'CO', name: 'Colombia', flag: '🇨🇴', group: 'K', confederation: 'CONMEBOL' },
 
   // Group L
-  { code: 'AT', name: 'Austria', flag: '🇦🇹', group: 'L', confederation: 'UEFA' },
-  { code: 'JM', name: 'Jamaica', flag: '🇯🇲', group: 'L', confederation: 'CONCACAF' },
-  { code: 'MA', name: 'Morocco', flag: '🇲🇦', group: 'L', confederation: 'CAF' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵', group: 'L', confederation: 'AFC' }
+  { code: 'GB', name: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', group: 'L', confederation: 'UEFA' },
+  { code: 'HR', name: 'Croatia', flag: '🇭🇷', group: 'L', confederation: 'UEFA' },
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭', group: 'L', confederation: 'CAF' },
+  { code: 'PA', name: 'Panama', flag: '🇵🇦', group: 'L', confederation: 'CONCACAF' }
 ];
 
 // Sample NFT players per nation
 export const NFT_PLAYERS = [
-  { name: 'Messi', nation: 'AR', position: 'FW', overall: 95, rarity: 'mythic' },
-  { name: 'Ronaldo', nation: 'PT', position: 'FW', overall: 93, rarity: 'mythic' },
-  { name: 'Mbappé', nation: 'FR', position: 'FW', overall: 96, rarity: 'legendary' },
-  { name: 'Neymar', nation: 'BR', position: 'FW', overall: 91, rarity: 'legendary' },
-  { name: 'Haaland', nation: 'NO', position: 'FW', overall: 94, rarity: 'legendary' },
-  { name: 'Vinicius Jr', nation: 'BR', position: 'FW', overall: 93, rarity: 'legendary' },
-  { name: 'Bellingham', nation: 'GB', position: 'MF', overall: 92, rarity: 'epic' },
-  { name: 'Pedri', nation: 'ES', position: 'MF', overall: 90, rarity: 'epic' },
-  { name: 'Saka', nation: 'GB', position: 'FW', overall: 89, rarity: 'epic' },
-  { name: 'De Bruyne', nation: 'BE', position: 'MF', overall: 91, rarity: 'epic' },
-  { name: 'Salah', nation: 'EG', position: 'FW', overall: 90, rarity: 'epic' },
-  { name: 'Son', nation: 'KR', position: 'FW', overall: 88, rarity: 'rare' },
-  { name: 'Pulisic', nation: 'US', position: 'MF', overall: 85, rarity: 'rare' },
-  { name: 'Lautaro', nation: 'AR', position: 'FW', overall: 89, rarity: 'rare' },
-  { name: 'Gavi', nation: 'ES', position: 'MF', overall: 86, rarity: 'rare' },
-  { name: 'Yamal', nation: 'ES', position: 'FW', overall: 88, rarity: 'rare' },
-  { name: 'Osimhen', nation: 'NG', position: 'FW', overall: 87, rarity: 'rare' },
-  { name: 'Hakimi', nation: 'MA', position: 'DF', overall: 87, rarity: 'rare' },
-  { name: 'Valverde', nation: 'UY', position: 'MF', overall: 88, rarity: 'rare' },
-  { name: 'Rodri', nation: 'ES', position: 'MF', overall: 91, rarity: 'epic' },
-  { name: 'Mané', nation: 'SN', position: 'FW', overall: 86, rarity: 'common' },
-  { name: 'James', nation: 'CO', position: 'MF', overall: 84, rarity: 'common' },
-  { name: 'Davies', nation: 'CA', position: 'DF', overall: 85, rarity: 'common' },
-  { name: 'Doan', nation: 'JP', position: 'FW', overall: 82, rarity: 'common' },
+  { id: 'nft_messi', name: 'Lionel Messi', nation: 'AR', rarity: 'mythic', miningBonus: 50, voteMultiplier: 2.0 },
+  { id: 'nft_ronaldo', name: 'Cristiano Ronaldo', nation: 'PT', rarity: 'mythic', miningBonus: 50, voteMultiplier: 2.0 },
+  { id: 'nft_mbappe', name: 'Kylian Mbappé', nation: 'FR', rarity: 'legendary', miningBonus: 40, voteMultiplier: 1.8 },
+  { id: 'nft_neymar', name: 'Neymar Jr', nation: 'BR', rarity: 'legendary', miningBonus: 40, voteMultiplier: 1.8 },
+  { id: 'nft_haaland', name: 'Erling Haaland', nation: 'NO', rarity: 'legendary', miningBonus: 40, voteMultiplier: 1.8 },
+  { id: 'nft_vinicius', name: 'Vinícius Jr', nation: 'BR', rarity: 'legendary', miningBonus: 35, voteMultiplier: 1.7 },
+  { id: 'nft_bellingham', name: 'Jude Bellingham', nation: 'GB', rarity: 'epic', miningBonus: 30, voteMultiplier: 1.5 },
+  { id: 'nft_pedri', name: 'Pedri', nation: 'ES', rarity: 'epic', miningBonus: 25, voteMultiplier: 1.4 },
+  { id: 'nft_saka', name: 'Bukayo Saka', nation: 'GB', rarity: 'epic', miningBonus: 25, voteMultiplier: 1.4 },
+  { id: 'nft_debruyne', name: 'Kevin De Bruyne', nation: 'BE', rarity: 'epic', miningBonus: 30, voteMultiplier: 1.5 },
+  { id: 'nft_salah', name: 'Mohamed Salah', nation: 'EG', rarity: 'epic', miningBonus: 28, voteMultiplier: 1.5 },
+  { id: 'nft_son', name: 'Son Heung-min', nation: 'KR', rarity: 'rare', miningBonus: 20, voteMultiplier: 1.3 },
+  { id: 'nft_pulisic', name: 'Christian Pulisic', nation: 'US', rarity: 'rare', miningBonus: 18, voteMultiplier: 1.3 },
+  { id: 'nft_lautaro', name: 'Lautaro Martínez', nation: 'AR', rarity: 'rare', miningBonus: 20, voteMultiplier: 1.3 },
+  { id: 'nft_gavi', name: 'Gavi', nation: 'ES', rarity: 'rare', miningBonus: 18, voteMultiplier: 1.3 },
+  { id: 'nft_yamal', name: 'Lamine Yamal', nation: 'ES', rarity: 'rare', miningBonus: 20, voteMultiplier: 1.3 },
+  { id: 'nft_osimhen', name: 'Victor Osimhen', nation: 'GH', rarity: 'rare', miningBonus: 18, voteMultiplier: 1.2 },
+  { id: 'nft_hakimi', name: 'Achraf Hakimi', nation: 'MA', rarity: 'rare', miningBonus: 18, voteMultiplier: 1.2 },
+  { id: 'nft_valverde', name: 'Federico Valverde', nation: 'UY', rarity: 'rare', miningBonus: 18, voteMultiplier: 1.2 },
+  { id: 'nft_rodri', name: 'Rodri', nation: 'ES', rarity: 'epic', miningBonus: 25, voteMultiplier: 1.4 },
+  { id: 'nft_mane', name: 'Sadio Mané', nation: 'SN', rarity: 'common', miningBonus: 10, voteMultiplier: 1.1 },
+  { id: 'nft_james', name: 'James Rodríguez', nation: 'CO', rarity: 'common', miningBonus: 10, voteMultiplier: 1.1 },
+  { id: 'nft_davies', name: 'Alphonso Davies', nation: 'CA', rarity: 'common', miningBonus: 10, voteMultiplier: 1.1 },
+  { id: 'nft_doan', name: 'Ritsu Doan', nation: 'JP', rarity: 'common', miningBonus: 8, voteMultiplier: 1.1 },
 ];
 
 export const getNationByCode = (code) => NATIONS.find(n => n.code === code);
-export const getNationsByGroup = (group) => NATIONS.filter(n => n.group === group);
-export const getGroups = () => [...new Set(NATIONS.map(n => n.group))].sort();
 export const getNFTsByNation = (nationCode) => NFT_PLAYERS.filter(p => p.nation === nationCode);
 export const getNFTsByRarity = (rarity) => NFT_PLAYERS.filter(p => p.rarity === rarity);
