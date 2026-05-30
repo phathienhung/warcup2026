@@ -92,6 +92,10 @@ export default function ShopPage() {
         if (res.success) {
           telegram.haptic.notification('success');
           await refreshUserStats();
+          if (activeTab === 'nfts') {
+            await loadMyNfts();
+          }
+          setSelectedItem(null);
           alert(`Successfully purchased ${selectedItem.name}!`);
         }
       } catch (err) {

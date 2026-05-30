@@ -1,9 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useUserStore from '../store/userStore';
 import telegram from '../lib/telegram';
+import api from '../lib/api';
+import { formatNumber } from '../data/constants';
 
 export default function FriendsPage() {
   const { referralCode, friendCount, telegramId } = useUserStore();
+  const [friendsList, setFriendsList] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
+
+  useEffect(() => {
+    const loadFriends = async () => {
+      try {
+        const data = await api.getFriends();
+        setFriendsList(data?.friends || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingFriends(false);
+      }
+    };
+    loadFriends();
+  }, []);
   const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${referralCode || ''}`;
 
   const handleCopy = () => {
@@ -43,17 +61,34 @@ export default function FriendsPage() {
 
       <h3 className="section-title">My Referrals ({friendCount || 0})</h3>
       
-      {friendCount === 0 ? (
+      {loadingFriends ? (
+        <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+      ) : friendsList.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">👥</div>
           <div className="empty-state-text">You haven't invited anyone yet. Invite friends to boost your mining power!</div>
         </div>
       ) : (
-        <div className="card">
-          <div className="flex-between">
-            <span>Total Bonus Earned:</span>
-            <span style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>+{friendCount} Speed</span>
+        <div className="flex-col gap-sm">
+          <div className="card mb-sm">
+            <div className="flex-between">
+              <span>Total Bonus Earned:</span>
+              <span style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>+{friendCount} Speed</span>
+            </div>
           </div>
+          {friendsList.map((f, i) => (
+            <div key={f.referred_id || i} className="card flex-between" style={{ padding: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--glass-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {(f.users?.username || 'P').charAt(0).toUpperCase()}
+                </div>
+                <span>{f.users?.username || 'Player'}</span>
+              </div>
+              <div style={{ color: 'var(--neon-green)', fontSize: '0.9rem' }}>
+                {formatNumber(f.users?.total_votes || 0)} votes
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

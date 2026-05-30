@@ -41,26 +41,6 @@ export default async function handler(req, res) {
         
       if (error) throw error;
       dbUser = newUser;
-
-      // Process referral if exists
-      if (start_param && start_param.startsWith('WC26_')) {
-        const { data: referrer } = await supabase
-          .from('users')
-          .select('telegram_id')
-          .eq('referral_code', start_param)
-          .single();
-          
-        if (referrer && referrer.telegram_id !== user.id) {
-          await supabase.from('referrals').insert({
-            referrer_id: referrer.telegram_id,
-            referred_id: user.id
-          });
-          
-          await supabase.from('users').update({ referred_by: referrer.telegram_id }).eq('telegram_id', user.id);
-          
-          // Bonus logic could go here
-        }
-      }
     } else {
       // Update login streak and last login
       const lastLogin = new Date(dbUser.last_login || new Date());
@@ -95,6 +75,25 @@ export default async function handler(req, res) {
       dbUser.energy = newEnergy;
     }
 
+    // Process referral if exists and user has no referrer yet
+    if (start_param && start_param.startsWith('WC26_') && !dbUser.referred_by) {
+      const { data: referrer } = await supabase
+        .from('users')
+        .select('telegram_id')
+        .eq('referral_code', start_param)
+        .single();
+        
+      if (referrer && referrer.telegram_id !== user.id) {
+        await supabase.from('referrals').insert({
+          referrer_id: referrer.telegram_id,
+          referred_id: user.id
+        });
+        
+        await supabase.from('users').update({ referred_by: referrer.telegram_id }).eq('telegram_id', user.id);
+        dbUser.referred_by = referrer.telegram_id;
+      }
+    }
+
     // Get friend count for mining speed calculation
     const { count: friendCount } = await supabase
       .from('referrals')
@@ -110,8 +109,11 @@ export default async function handler(req, res) {
     let nftMultiplier = 1.0;
     if (userNfts) {
       userNfts.forEach(n => {
-        if (n.nft_templates && typeof n.nft_templates.vote_multiplier === 'number') {
-          nftMultiplier += (n.nft_templates.vote_multiplier - 1.0);
+        let template = n.nft_templates;
+        if (Array.isArray(template)) template = template[0];
+        const mult = Number(template?.vote_multiplier);
+        if (!isNaN(mult) && mult > 0) {
+          nftMultiplier += (mult - 1.0);
         }
       });
     }

@@ -46,8 +46,11 @@ export default async function handler(req, res) {
       let nftMultiplier = 1.0;
       if (userNfts) {
         userNfts.forEach(n => {
-          if (n.nft_templates && typeof n.nft_templates.vote_multiplier === 'number') {
-            nftMultiplier += (n.nft_templates.vote_multiplier - 1.0);
+          let template = n.nft_templates;
+          if (Array.isArray(template)) template = template[0];
+          const mult = Number(template?.vote_multiplier);
+          if (!isNaN(mult) && mult > 0) {
+            nftMultiplier += (mult - 1.0);
           }
         });
       }
