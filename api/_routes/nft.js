@@ -31,8 +31,46 @@ export default async function handler(req, res) {
     }
     
     if (action === 'buy') {
-      // Logic to buy NFT
-      return res.status(200).json({ success: true });
+      const { nftId } = req.body;
+      try {
+        const { data: nft } = await supabase.from('nft_templates').select('*').eq('id', nftId).single();
+        if (!nft) return res.status(404).json({ error: 'NFT not found' });
+        
+        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+        if (!dbUser) return res.status(404).json({ error: 'User not found' });
+
+        // Simulate Ton transaction success (same as shop.js)
+        // Add to user_nfts
+        const { data: newNft, error: insertError } = await supabase.from('user_nfts').insert({
+          user_id: user.id,
+          nft_template_id: nft.id,
+          mint_number: (nft.minted_count || 0) + 1,
+          equipped: false
+        }).select().single();
+        
+        if (insertError) throw insertError;
+
+        // Update nft template minted count
+        await supabase.from('nft_templates').update({ minted_count: (nft.minted_count || 0) + 1 }).eq('id', nft.id);
+        
+        // Update user nft_count
+        await supabase.from('users').update({ nft_count: (dbUser.nft_count || 0) + 1 }).eq('telegram_id', user.id);
+        
+        // Log purchase in shop_purchases
+        await supabase.from('shop_purchases').insert({
+          user_id: user.id,
+          item_type: 'nft',
+          item_id: nft.id,
+          quantity: 1,
+          price_paid: nft.price_votes, // or price_ton if added
+          price_type: 'ton'
+        });
+
+        return res.status(200).json({ success: true, message: `Successfully purchased ${nft.player_name}` });
+      } catch (e) {
+        console.error('NFT purchase error:', e);
+        return res.status(500).json({ error: 'Server error during NFT purchase' });
+      }
     }
   }
 }

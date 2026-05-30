@@ -58,16 +58,34 @@ export default function ShopPage() {
           ]
         };
         await tonConnectUI.sendTransaction(transaction);
-        telegram.haptic.notification('success');
-        alert(`Successfully purchased ${selectedItem.name}!`);
+        
+        // After TON transaction succeeds, tell backend to apply the purchase
+        let res;
+        if (selectedItem.type === 'nft') {
+          res = await api.buyNFT(selectedItem.id);
+        } else {
+          res = await api.buyItem(selectedItem.id, 1);
+        }
+        
+        if (res.success) {
+          telegram.haptic.notification('success');
+          await refreshUserStats();
+          alert(`Successfully purchased ${selectedItem.name}!`);
+        }
       } catch (err) {
         console.error('Transaction failed', err);
         telegram.haptic.notification('error');
+        alert(err.message || 'Transaction failed');
       }
     } else {
-      // Votes or Stars
+      // Votes or Stars (fallback, currently all ton)
       try {
-        const res = await api.buyItem(selectedItem.id, 1);
+        let res;
+        if (selectedItem.type === 'nft') {
+          res = await api.buyNFT(selectedItem.id);
+        } else {
+          res = await api.buyItem(selectedItem.id, 1);
+        }
         if (res.success) {
           telegram.haptic.notification('success');
           await refreshUserStats();
@@ -118,7 +136,7 @@ export default function ShopPage() {
       {activeTab === 'nfts' && (
         <div className="grid-2">
           {nftTemplates.map((player) => (
-            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes, priceType: 'votes' })}>
+            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ id: player.id, type: 'nft', name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes || 1.5, priceType: 'ton' })}>
               <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {player.image_url ? (
                   <img src={player.image_url} alt={player.player_name} style={{ width: '100%', objectFit: 'contain' }} />
@@ -129,7 +147,7 @@ export default function ShopPage() {
               <div className="nft-card-body">
                 <div className="nft-card-name">{player.player_name}</div>
                 <div className="nft-card-rarity">{player.rarity}</div>
-                <button className="btn btn-primary btn-full btn-sm mt-md">{player.price_votes} Votes</button>
+                <button className="btn btn-primary btn-full btn-sm mt-md">{player.price_votes || 1.5} TON</button>
               </div>
             </div>
           ))}

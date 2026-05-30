@@ -2,14 +2,14 @@ import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
 
 const SHOP_ITEMS = [
-  { id: 1, name: 'Starter Pack', type: 'vote_pack', priceType: 'stars', price: 10, value: 1000, description: '1,000 Votes', icon: '📦' },
-  { id: 2, name: 'Pro Pack', type: 'vote_pack', priceType: 'stars', price: 50, value: 6000, description: '6,000 Votes (+20% bonus)', icon: '💎' },
-  { id: 3, name: 'Mega Pack', type: 'vote_pack', priceType: 'stars', price: 100, value: 15000, description: '15,000 Votes (+50% bonus)', icon: '🏆' },
-  { id: 4, name: 'Energy Refill', type: 'energy', priceType: 'votes', price: 500, value: 1000, description: 'Full energy refill', icon: '⚡' },
-  { id: 5, name: 'Double Mining (1h)', type: 'boost', priceType: 'votes', price: 2000, value: 3600, description: '2x mining speed for 1 hour', icon: '🚀' },
-  { id: 6, name: 'Triple Mining (1h)', type: 'boost', priceType: 'stars', price: 20, value: 3600, description: '3x mining speed for 1 hour', icon: '💫' },
-  { id: 7, name: 'Spin Ticket x1', type: 'spin_ticket', priceType: 'votes', price: 1000, value: 1, description: '1 Lucky Spin ticket', icon: '🎟️' },
-  { id: 8, name: 'Spin Ticket x5', type: 'spin_ticket', priceType: 'votes', price: 4000, value: 5, description: '5 Lucky Spin tickets (-20%)', icon: '🎫' },
+  { id: 1, name: 'Starter Pack', type: 'vote_pack', priceType: 'ton', price: 0.1, value: 1000, description: '1,000 Votes', icon: '📦' },
+  { id: 2, name: 'Pro Pack', type: 'vote_pack', priceType: 'ton', price: 0.5, value: 6000, description: '6,000 Votes (+20% bonus)', icon: '💎' },
+  { id: 3, name: 'Mega Pack', type: 'vote_pack', priceType: 'ton', price: 1.0, value: 15000, description: '15,000 Votes (+50% bonus)', icon: '🏆' },
+  { id: 4, name: 'Energy Refill', type: 'energy', priceType: 'ton', price: 0.05, value: 1000, description: 'Full energy refill', icon: '⚡' },
+  { id: 5, name: 'Double Mining (1h)', type: 'boost', priceType: 'ton', price: 0.2, value: 3600, description: '2x mining speed for 1 hour', icon: '🚀' },
+  { id: 6, name: 'Triple Mining (1h)', type: 'boost', priceType: 'ton', price: 0.3, value: 3600, description: '3x mining speed for 1 hour', icon: '💫' },
+  { id: 7, name: 'Spin Ticket x1', type: 'spin_ticket', priceType: 'ton', price: 0.1, value: 1, description: '1 Lucky Spin ticket', icon: '🎟️' },
+  { id: 8, name: 'Spin Ticket x5', type: 'spin_ticket', priceType: 'ton', price: 0.4, value: 5, description: '5 Lucky Spin tickets (-20%)', icon: '🎫' },
 ];
 
 export default async function handler(req, res) {
@@ -44,7 +44,8 @@ export default async function handler(req, res) {
         if (!item) return res.status(404).json({ error: 'Item not found' });
         
         // For stars/ton, we just simulate success here for now,
-        // but in real app it would be handled via Telegram Stars invoice webhook
+        // but in real app it would be handled via Telegram Stars or TON backend verifier.
+        // The frontend already requested tonConnectUI.sendTransaction before calling this.
         
         const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
         if (!dbUser) return res.status(404).json({ error: 'User not found' });
