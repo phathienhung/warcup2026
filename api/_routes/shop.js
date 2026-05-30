@@ -51,6 +51,11 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Not enough votes' });
           }
           updates.available_votes = dbUser.available_votes - totalCost;
+        } else if (item.price_type === 'ton' || item.priceType === 'ton') {
+          const currentTon = dbUser.ton_balance || 0;
+          if (currentTon > 0) {
+            updates.ton_balance = Math.max(0, currentTon - totalCost);
+          }
         }
 
         // Apply item effects

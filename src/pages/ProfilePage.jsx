@@ -35,9 +35,7 @@ export default function ProfilePage() {
   };
   const nationData = nations.find(n => n.code === favoriteNation) || NATIONS.find(n => n.code === favoriteNation);
   const initial = (firstName || username || 'P').charAt(0).toUpperCase();
-
-  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${telegramId || ''}`;
-
+  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${referralCode || ''}`;
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
     telegram.haptic.notification('success');
@@ -116,13 +114,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <h3 className="section-title">My Achievements</h3>
-          <ShareCard 
-            title="Pro Miner" 
-            subtitle="Mined over 10,000 votes" 
-            value="Level 5" 
-            icon="💎" 
-          />
+
         </>
       )}
 

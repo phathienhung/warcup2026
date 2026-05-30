@@ -53,8 +53,14 @@ export default async function handler(req, res) {
         // Update nft template minted count
         await supabase.from('nft_templates').update({ minted_count: (nft.minted_count || 0) + 1 }).eq('id', nft.id);
         
-        // Update user nft_count
-        await supabase.from('users').update({ nft_count: (dbUser.nft_count || 0) + 1 }).eq('telegram_id', user.id);
+        // Update user nft_count and ton_balance
+        const updates = { nft_count: (dbUser.nft_count || 0) + 1 };
+        const totalCost = nft.price_votes || 1.5;
+        const currentTon = dbUser.ton_balance || 0;
+        if (currentTon > 0) {
+          updates.ton_balance = Math.max(0, currentTon - totalCost);
+        }
+        await supabase.from('users').update(updates).eq('telegram_id', user.id);
         
         // Log purchase in shop_purchases
         await supabase.from('shop_purchases').insert({

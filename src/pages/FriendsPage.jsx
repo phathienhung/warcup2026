@@ -4,7 +4,7 @@ import telegram from '../lib/telegram';
 
 export default function FriendsPage() {
   const { referralCode, friendCount, telegramId } = useUserStore();
-  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${telegramId || ''}`;
+  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${referralCode || ''}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);

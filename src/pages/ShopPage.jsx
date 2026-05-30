@@ -12,7 +12,7 @@ export default function ShopPage() {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [tonConnectUI] = useTonConnectUI();
-  const { shopItems, nftTemplates } = useGameStore();
+  const { shopItems, nftTemplates, tonBalance } = useGameStore();
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -48,16 +48,22 @@ export default function ShopPage() {
     
     if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
       try {
-        const transaction = {
-          validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
-          messages: [
-            {
-              address: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c', // Mock admin address
-              amount: String(selectedItem.price * 1000000000), // convert TON to nanoTON
-            }
-          ]
-        };
-        await tonConnectUI.sendTransaction(transaction);
+        const requiredTon = Number(selectedItem.price);
+        const currentTon = tonBalance || 0;
+        const missingTon = requiredTon - currentTon;
+
+        if (missingTon > 0) {
+          const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 60,
+            messages: [
+              {
+                address: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                amount: String(Math.floor(missingTon * 1000000000)),
+              }
+            ]
+          };
+          await tonConnectUI.sendTransaction(transaction);
+        }
         
         // After TON transaction succeeds, tell backend to apply the purchase
         let res;
