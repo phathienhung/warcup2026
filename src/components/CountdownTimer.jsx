@@ -26,7 +26,6 @@ export default function CountdownTimer({ targetDate }) {
       if (days > 0) formatted.push(`${days}d`);
       formatted.push(`${hours}h`);
       formatted.push(`${minutes}m`);
-      formatted.push(`${seconds}s`);
 
       setTimeLeft(formatted.join(' '));
       setIsUrgent(distance < 1000 * 60 * 60); // Less than 1 hour

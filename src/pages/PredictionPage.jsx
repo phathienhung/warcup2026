@@ -50,7 +50,7 @@ export default function PredictionPage() {
     return obj;
   }, [matches]);
 
-  const [selectedGroup, setSelectedGroup] = useState('Bảng A');
+  const [selectedGroup, setSelectedGroup] = useState('Group A');
   const [selectedMatch, setSelectedMatch] = useState(null);
   
   // Modal state
@@ -126,7 +126,7 @@ export default function PredictionPage() {
             <React.Fragment key={match.id}>
               {showRoundHeader && (
                 <div className="round-header" style={{ margin: '16px 0 8px', color: 'var(--neon-green)', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
-                  Vòng bảng - {match.round}
+                  Group Stage - {match.round}
                 </div>
               )}
               <div className="match-card mb-md" onClick={() => handleOpenModal(match)} style={{ cursor: 'pointer' }}>
