@@ -117,7 +117,7 @@ export default function ProfilePage() {
               <div className="profile-stat-label">Votes</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-value" style={{ color: '#00d4ff' }}>{useGameStore.getState().tonBalance || 0}</div>
+              <div className="profile-stat-value" style={{ color: '#00d4ff' }}>{(useGameStore.getState().tonBalance || 0).toFixed(3)}</div>
               <div className="profile-stat-label">TON</div>
             </div>
             <div className="profile-stat">

@@ -133,7 +133,7 @@ export default function WalletPage() {
             <div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>TON Balance</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00d4ff', fontFamily: 'var(--font-display)' }}>
-                {tonBalance || 0}
+                {(tonBalance || 0).toFixed(3)}
               </div>
             </div>
           </div>

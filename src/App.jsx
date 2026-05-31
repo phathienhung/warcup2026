@@ -96,6 +96,14 @@ export default function App() {
       // Start regen AFTER setGameState so it uses the correct energy value
       stopEnergyRegen();
       startEnergyRegen();
+
+      // Sync pending taps when user leaves / minimizes the app
+      const handleVisChange = () => {
+        if (document.visibilityState === 'hidden') {
+          useGameStore.getState().syncTaps();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisChange);
     } catch (err) {
       console.error('[App] Init failed:', err);
     } finally {

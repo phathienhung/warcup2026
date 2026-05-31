@@ -68,7 +68,7 @@ export const useGameStore = create((set, get) => ({
   // ── Tap Action ────────────────────────────────────
   tap(touchCount = 1) {
     const state = get();
-    const energyCost = state.miningSpeed * touchCount;
+    const energyCost = touchCount; // 1 energy per tap, matching server
     if (state.energy < energyCost) return { success: false, votes: 0 };
 
     const votesEarned = state.miningSpeed * touchCount;
@@ -82,7 +82,7 @@ export const useGameStore = create((set, get) => ({
     });
 
     // Debounced sync to server
-    if (state.pendingTaps + touchCount >= 10) {
+    if (state.pendingTaps + touchCount >= 5) {
       get().syncTaps();
     }
 

@@ -9,12 +9,14 @@ import api from '../lib/api';
 export default function ShopPage() {
   const [activeTab, setActiveTab] = useState('boosts'); // 'boosts' | 'nfts' | 'history'
   const [selectedItem, setSelectedItem] = useState(null);
+  const [buying, setBuying] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [tonConnectUI] = useTonConnectUI();
   const { shopItems, nftTemplates, tonBalance } = useGameStore();
   const [myNfts, setMyNfts] = useState([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
+  const [purchasedBoostIds, setPurchasedBoostIds] = useState([]);
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -60,10 +62,11 @@ export default function ShopPage() {
   };
 
   const handleBuy = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || buying) return;
+    setBuying(true);
     
-    if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
-      try {
+    try {
+      if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
         const requiredTon = Number(selectedItem.price);
         const currentTon = tonBalance || 0;
         const missingTon = requiredTon - currentTon;
@@ -81,7 +84,6 @@ export default function ShopPage() {
           await tonConnectUI.sendTransaction(transaction);
         }
         
-        // After TON transaction succeeds, tell backend to apply the purchase
         let res;
         if (selectedItem.type === 'nft') {
           res = await api.buyNFT(selectedItem.id);
@@ -92,20 +94,15 @@ export default function ShopPage() {
         if (res.success) {
           telegram.haptic.notification('success');
           await refreshUserStats();
-          if (activeTab === 'nfts') {
+          if (selectedItem.type === 'nft') {
             await loadMyNfts();
+          } else {
+            setPurchasedBoostIds(prev => [...prev, selectedItem.id]);
           }
           setSelectedItem(null);
           alert(`Successfully purchased ${selectedItem.name}!`);
         }
-      } catch (err) {
-        console.error('Transaction failed', err);
-        telegram.haptic.notification('error');
-        alert(err.message || 'Transaction failed');
-      }
-    } else {
-      // Votes or Stars (fallback, currently all ton)
-      try {
+      } else {
         let res;
         if (selectedItem.type === 'nft') {
           res = await api.buyNFT(selectedItem.id);
@@ -115,21 +112,33 @@ export default function ShopPage() {
         if (res.success) {
           telegram.haptic.notification('success');
           await refreshUserStats();
+          if (selectedItem.type === 'nft') {
+            await loadMyNfts();
+          } else {
+            setPurchasedBoostIds(prev => [...prev, selectedItem.id]);
+          }
+          setSelectedItem(null);
           alert(`Successfully purchased ${selectedItem.name}!`);
         }
-      } catch (err) {
-        telegram.haptic.notification('error');
-        alert(err.message || 'Failed to purchase item');
       }
+    } catch (err) {
+      console.error('Transaction failed', err);
+      telegram.haptic.notification('error');
+      alert(err.message || 'Transaction failed');
+    } finally {
+      setBuying(false);
     }
-    setSelectedItem(null);
   };
+
+  const availableNfts = nftTemplates.filter(player => !myNfts.some(n => n.nft_template_id === player.id));
 
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Shop & Collectibles</h1>
-        <div className="page-subtitle">Get boosts or buy Chibi Player Collectibles</div>
+        <div className="page-subtitle">
+          Balance: {(tonBalance || 0).toFixed(3)} TON 💎 | Owned NFTs: {myNfts.length}
+        </div>
       </div>
 
       <div className="mb-md" style={{ display: 'flex', justifyContent: 'center' }}>
@@ -138,13 +147,15 @@ export default function ShopPage() {
 
       <div className="tabs mb-md">
         <button className={`tab ${activeTab === 'boosts' ? 'active' : ''}`} onClick={() => setActiveTab('boosts')}>Boosts</button>
-        <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>NFT Collectibles</button>
+        <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>
+          NFTs ({availableNfts.length} available)
+        </button>
         <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History</button>
       </div>
 
       {activeTab === 'boosts' && (
         <div className="shop-grid">
-          {shopItems.map((item) => (
+          {shopItems.filter(item => !purchasedBoostIds.includes(item.id)).map((item) => (
             <div key={item.id} className="shop-item" onClick={() => setSelectedItem(item)}>
               <div className="shop-item-icon">
                 {item.image_url ? <img src={item.image_url} alt={item.name} style={{ width: '100%', borderRadius: '8px' }} /> : item.icon}
@@ -163,7 +174,11 @@ export default function ShopPage() {
         <div className="grid-2">
           {loadingNfts ? (
             <div className="text-center p-md" style={{ color: 'var(--text-secondary)' }}>Loading...</div>
-          ) : nftTemplates.filter(player => !myNfts.some(n => n.nft_template_id === player.id)).map((player) => (
+          ) : availableNfts.length === 0 ? (
+            <div className="text-center p-md" style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1' }}>
+              You own all available NFTs! 🎉
+            </div>
+          ) : availableNfts.map((player) => (
             <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ id: player.id, type: 'nft', name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes || 1.5, priceType: 'ton' })}>
               <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {player.image_url ? (
@@ -175,6 +190,9 @@ export default function ShopPage() {
               <div className="nft-card-body">
                 <div className="nft-card-name">{player.player_name}</div>
                 <div className="nft-card-rarity">{player.rarity}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  {player.minted_count || 0}/{player.total_supply || '∞'} minted
+                </div>
                 <button className="btn btn-primary btn-full btn-sm mt-md">{player.price_votes || 1.5} TON</button>
               </div>
             </div>
@@ -208,7 +226,7 @@ export default function ShopPage() {
 
       <Modal 
         isOpen={!!selectedItem} 
-        onClose={() => setSelectedItem(null)}
+        onClose={() => { if (!buying) setSelectedItem(null); }}
         title="Confirm Purchase"
       >
         {selectedItem && (
@@ -221,10 +239,18 @@ export default function ShopPage() {
               )}
             </div>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{selectedItem.name}</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>{selectedItem.description}</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>{selectedItem.description}</p>
+            <p style={{ color: '#00d4ff', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Your balance: {(tonBalance || 0).toFixed(3)} TON
+            </p>
             
-            <button className="btn btn-primary btn-full" onClick={handleBuy}>
-              Pay {selectedItem.price} {selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton' ? 'TON 💎' : 'Votes ⚽'}
+            <button 
+              className="btn btn-primary btn-full" 
+              onClick={handleBuy}
+              disabled={buying}
+              style={{ opacity: buying ? 0.5 : 1 }}
+            >
+              {buying ? 'PURCHASING...' : `Pay ${selectedItem.price} ${selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton' ? 'TON 💎' : 'Votes ⚽'}`}
             </button>
           </div>
         )}

@@ -154,8 +154,17 @@ function SpinModalContent() {
         useGameStore.setState(s => ({ tonBalance: s.tonBalance + reward.reward }));
       }
 
-      // Save to database
-      api.spin('save_reward', reward).catch(e => console.error('Failed to save spin reward', e));
+      // Save to database and refresh stats
+      try {
+        await api.spin('save_reward', reward);
+        // Re-fetch from server to get accurate stats
+        const authData = await api.auth();
+        if (authData?.user) {
+          useGameStore.getState().setGameState(authData.user);
+        }
+      } catch (e) {
+        console.error('Failed to save spin reward', e);
+      }
     }, 4000);
   };
 
