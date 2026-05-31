@@ -66,7 +66,7 @@ export default async function handler(req, res) {
       const energyGained = Math.floor(diffMs / regenRateMs) * stats.regen.final;
       
       const currentRegennedEnergy = Math.min(stats.maxEnergy.final, (dbUser.energy || 0) + energyGained);
-      const energyCost = count * 1; // Assuming 1 energy per tap
+      const energyCost = count * speed; // Energy cost scales with mining speed
       if (currentRegennedEnergy < energyCost) {
         return res.status(400).json({ error: 'Not enough energy', energy: currentRegennedEnergy });
       }

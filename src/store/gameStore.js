@@ -68,7 +68,7 @@ export const useGameStore = create((set, get) => ({
   // ── Tap Action ────────────────────────────────────
   tap(touchCount = 1) {
     const state = get();
-    const energyCost = touchCount; // 1 energy per tap, matching server
+    const energyCost = state.miningSpeed * touchCount;
     if (state.energy < energyCost) return { success: false, votes: 0 };
 
     const votesEarned = state.miningSpeed * touchCount;
