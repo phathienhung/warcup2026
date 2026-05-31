@@ -34,18 +34,46 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Not enough available votes' });
       }
       
-      // 2. Deduct votes and create prediction
+      // 2. Deduct votes
       await supabase.from('users').update({ available_votes: Number(dbUser.available_votes) - votesStaked }).eq('telegram_id', user.id);
       
-      const { error } = await supabase.from('predictions').insert({
-        user_id: user.id,
-        match_id: matchId,
-        predicted_team: team,
-        votes_staked: votesStaked
-      });
-      
-      if (error) return res.status(500).json({ error: error.message });
-      
+      // 3. Upsert Prediction (accumulate votes if same outcome)
+      const { data: existingPred } = await supabase.from('predictions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('match_id', matchId)
+        .eq('predicted_team', team)
+        .maybeSingle();
+
+      if (existingPred) {
+        // Accumulate
+        await supabase.from('predictions')
+          .update({ votes_staked: Number(existingPred.votes_staked) + votesStaked })
+          .eq('id', existingPred.id);
+      } else {
+        // Insert new
+        const { error } = await supabase.from('predictions').insert({
+          user_id: user.id,
+          match_id: matchId,
+          predicted_team: team,
+          votes_staked: votesStaked
+        });
+        if (error) return res.status(500).json({ error: error.message });
+      }
+
+      // 4. Update match total pool
+      const { data: match } = await supabase.from('matches').select('total_votes_a, total_votes_b, total_votes_draw').eq('id', matchId).single();
+      if (match) {
+        let updateData = {};
+        if (team === 'A') updateData.total_votes_a = Number(match.total_votes_a || 0) + votesStaked;
+        else if (team === 'B') updateData.total_votes_b = Number(match.total_votes_b || 0) + votesStaked;
+        else if (team === 'DRAW') updateData.total_votes_draw = Number(match.total_votes_draw || 0) + votesStaked;
+        
+        if (Object.keys(updateData).length > 0) {
+          await supabase.from('matches').update(updateData).eq('id', matchId);
+        }
+      }
+
       return res.status(200).json({ success: true });
     }
   }

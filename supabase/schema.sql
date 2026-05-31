@@ -59,8 +59,12 @@ CREATE TABLE IF NOT EXISTS matches (
   winner TEXT,
   score_a INT,
   score_b INT,
+  base_pool_a BIGINT DEFAULT 10000,
+  base_pool_b BIGINT DEFAULT 10000,
+  base_pool_draw BIGINT DEFAULT 5000,
   total_votes_a BIGINT DEFAULT 0,
-  total_votes_b BIGINT DEFAULT 0
+  total_votes_b BIGINT DEFAULT 0,
+  total_votes_draw BIGINT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS predictions (

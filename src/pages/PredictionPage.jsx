@@ -1,12 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NATIONS } from '../data/countries';
 import useGameStore from '../store/gameStore';
 import Modal from '../components/Modal';
 import CountdownTimer from '../components/CountdownTimer';
 import { formatNumber } from '../data/constants';
-import { SCHEDULED_MATCHES } from '../data/matches';
 import telegram from '../lib/telegram';
-
+import api from '../lib/api';
 
 const SCORE_OPTIONS = [
   { label: '1-0', mult: 5.0 },
@@ -24,21 +23,54 @@ export default function PredictionPage() {
   const storeNations = useGameStore(s => s.nations);
   const allNations = storeNations && storeNations.length > 0 ? storeNations : NATIONS;
   
+  const [rawMatches, setRawMatches] = useState([]);
+  const [myPredictions, setMyPredictions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [selectedGroup, setSelectedGroup] = useState('Group A');
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  
+  // Modal state
+  const [outcome, setOutcome] = useState('A'); // 'A', 'B', 'DRAW'
+  const [score, setScore] = useState(null);
+  const [stake, setStake] = useState(100);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [matchesData, predsData] = await Promise.all([
+        api.getMatches(),
+        api.getMyPredictions()
+      ]);
+      setRawMatches(matchesData || []);
+      setMyPredictions(predsData || []);
+    } catch (err) {
+      console.error('Failed to load prediction data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const matches = useMemo(() => {
-    return SCHEDULED_MATCHES.map(m => {
-      const tA = allNations.find(n => n.code === m.teamA) || { code: m.teamA, name: m.teamA, flag: '🏳️' };
-      const tB = allNations.find(n => n.code === m.teamB) || { code: m.teamB, name: m.teamB, flag: '🏳️' };
+    return rawMatches.map(m => {
+      const tA = allNations.find(n => n.code === m.team_a) || { code: m.team_a, name: m.team_a, flag: '🏳️' };
+      const tB = allNations.find(n => n.code === m.team_b) || { code: m.team_b, name: m.team_b, flag: '🏳️' };
       return {
         ...m,
         teamA: tA,
         teamB: tB,
-        // mock pools
-        poolA: Math.floor(Math.random() * 50000) + 10000,
-        poolB: Math.floor(Math.random() * 50000) + 10000,
-        poolDraw: Math.floor(Math.random() * 20000) + 5000,
+        // Calculate dynamic pools
+        poolA: Number(m.base_pool_a) + Number(m.total_votes_a),
+        poolB: Number(m.base_pool_b) + Number(m.total_votes_b),
+        poolDraw: Number(m.base_pool_draw) + Number(m.total_votes_draw),
       };
     });
-  }, [allNations]);
+  }, [rawMatches, allNations]);
   
   // Group matches by Group letter for UI
   const groupedMatches = useMemo(() => {
@@ -50,41 +82,30 @@ export default function PredictionPage() {
     return obj;
   }, [matches]);
 
-  const [selectedGroup, setSelectedGroup] = useState('Group A');
-  const [selectedMatch, setSelectedMatch] = useState(null);
-  
-  // Modal state
-  const [outcome, setOutcome] = useState('A'); // 'A', 'B', 'DRAW'
-  const [score, setScore] = useState(null);
-  const [stake, setStake] = useState(100);
-  
-  // Track user predictions (matchId -> { outcome, score, stake })
-  const [myPredictions, setMyPredictions] = useState({});
-
   const handleOpenModal = (match) => {
     setSelectedMatch(match);
-    const existing = myPredictions[match.id];
-    if (existing) {
-      setOutcome(existing.outcome);
-      setScore(existing.score);
-      setStake(existing.stake);
-    } else {
-      setOutcome('A');
-      setScore(null);
-      setStake(100);
-    }
+    setOutcome('A');
+    setScore(null);
+    setStake(100);
   };
 
-  const handlePredict = () => {
+  const handlePredict = async () => {
     if (stake < 100) return alert('Minimum stake is 100 votes.');
     
-    setMyPredictions(prev => ({
-      ...prev,
-      [selectedMatch.id]: { outcome, score, stake }
-    }));
-    
-    telegram.haptic.notification('success');
-    setSelectedMatch(null);
+    setSubmitting(true);
+    try {
+      const res = await api.predict(selectedMatch.id, outcome, stake);
+      if (res.success) {
+        telegram.haptic.notification('success');
+        await loadData(); // Refresh data to show updated pools and predictions
+        setSelectedMatch(null);
+      }
+    } catch (err) {
+      telegram.haptic.notification('error');
+      alert(err.message || 'Failed to place prediction');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getMultiplier = (match, type) => {
@@ -94,6 +115,10 @@ export default function PredictionPage() {
     return (total / (match.poolDraw || 1)).toFixed(2);
   };
 
+  if (loading && rawMatches.length === 0) {
+    return <div className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Loading Matches...</div>;
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -102,7 +127,7 @@ export default function PredictionPage() {
       </div>
 
       <div className="tabs mb-lg" style={{ flexWrap: 'wrap', gap: '8px', padding: '8px' }}>
-        {Object.keys(groupedMatches).map(group => (
+        {Object.keys(groupedMatches).sort().map(group => (
           <button 
             key={group} 
             className={`tab ${selectedGroup === group ? 'active' : ''}`}
@@ -116,61 +141,60 @@ export default function PredictionPage() {
 
       <div className="matches-list">
         {groupedMatches[selectedGroup]?.map((match, index, array) => {
-          const prediction = myPredictions[match.id];
-          const showRoundHeader = index === 0 || array[index - 1].round !== match.round;
-          const matchDate = new Date(match.date);
+          // Get all predictions for this match
+          const matchPredictions = myPredictions.filter(p => p.match_id === match.id);
+          const predA = matchPredictions.find(p => p.predicted_team === 'A');
+          const predB = matchPredictions.find(p => p.predicted_team === 'B');
+          const predDraw = matchPredictions.find(p => p.predicted_team === 'DRAW');
+
+          // Date logic
+          let matchDate;
+          try {
+            matchDate = new Date(match.match_date);
+          } catch (e) {
+            matchDate = new Date();
+          }
           const dateStr = matchDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
           const timeStr = matchDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           return (
             <React.Fragment key={match.id}>
-              {showRoundHeader && (
-                <div className="round-header" style={{ margin: '16px 0 8px', color: 'var(--neon-green)', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
-                  Group Stage - {match.round}
-                </div>
-              )}
               <div className="match-card mb-md" onClick={() => handleOpenModal(match)} style={{ cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <div>{timeStr} - {dateStr}</div>
-                  <CountdownTimer targetDate={match.date} />
+                  <CountdownTimer targetDate={match.match_date} />
                 </div>
                 <div className="match-teams">
                   <div className="match-team">
                     <div className="match-team-flag">{match.teamA.flag}</div>
                     <div className="match-team-name">{match.teamA.name}</div>
-                  {prediction && prediction.outcome === 'A' && (
-                    <div className="badge badge-green mt-sm">Staked: {formatNumber(prediction.stake)}</div>
-                  )}
-                </div>
-                
-                <div className="match-vs">VS</div>
-                
-                <div className="match-team">
-                  <div className="match-team-flag">{match.teamB.flag}</div>
-                  <div className="match-team-name">{match.teamB.name}</div>
-                  {prediction && prediction.outcome === 'B' && (
-                    <div className="badge badge-green mt-sm">Staked: {formatNumber(prediction.stake)}</div>
-                  )}
+                    {predA && (
+                      <div className="badge badge-green mt-sm">Staked: {formatNumber(predA.votes_staked)}</div>
+                    )}
+                  </div>
+                  
+                  <div className="match-vs">
+                    <div>VS</div>
+                    {predDraw && (
+                      <div className="badge badge-gold mt-sm">Draw: {formatNumber(predDraw.votes_staked)}</div>
+                    )}
+                  </div>
+                  
+                  <div className="match-team">
+                    <div className="match-team-flag">{match.teamB.flag}</div>
+                    <div className="match-team-name">{match.teamB.name}</div>
+                    {predB && (
+                      <div className="badge badge-green mt-sm">Staked: {formatNumber(predB.votes_staked)}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              {prediction && prediction.outcome === 'DRAW' && (
-                <div className="text-center mt-sm">
-                  <div className="badge badge-gold">Draw Staked: {formatNumber(prediction.stake)}</div>
-                </div>
-              )}
-              {prediction && prediction.score && (
-                <div className="text-center mt-sm">
-                  <span style={{ fontSize: '0.75rem', color: 'var(--neon-blue)' }}>Score Prediction: {prediction.score.label}</span>
-                </div>
-              )}
-            </div>
             </React.Fragment>
           );
         })}
       </div>
 
-      <Modal isOpen={!!selectedMatch} onClose={() => setSelectedMatch(null)} title="Make Prediction">
+      <Modal isOpen={!!selectedMatch} onClose={() => { if (!submitting) setSelectedMatch(null); }} title="Make Prediction">
         {selectedMatch && (
           <div>
             <h3 className="mb-sm text-center">Match Outcome</h3>
@@ -217,6 +241,9 @@ export default function PredictionPage() {
 
             <div className="card mb-lg" style={{ padding: '16px' }}>
               <h3 className="mb-sm text-center">Stake Votes</h3>
+              <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Balance: {formatNumber(useGameStore.getState().availableVotes)}
+              </p>
               <input 
                 type="number"
                 min="100"
@@ -236,8 +263,13 @@ export default function PredictionPage() {
               />
             </div>
 
-            <button className="btn btn-primary btn-full btn-lg" onClick={handlePredict}>
-              CONFIRM PREDICTION
+            <button 
+              className="btn btn-primary btn-full btn-lg" 
+              onClick={handlePredict}
+              disabled={submitting}
+              style={{ opacity: submitting ? 0.7 : 1 }}
+            >
+              {submitting ? 'PROCESSING...' : 'CONFIRM PREDICTION'}
             </button>
           </div>
         )}
