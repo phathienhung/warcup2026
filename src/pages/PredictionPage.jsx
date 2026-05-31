@@ -244,7 +244,13 @@ export default function PredictionPage() {
               <div className="match-card mb-md">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <div>{timeStr} - {dateStr}</div>
-                  <CountdownTimer targetDate={match.match_date} />
+                  {match.status === 'completed' ? (
+                    <div style={{ color: 'var(--neon-green)', fontWeight: 'bold', textShadow: 'var(--glow-green)' }}>
+                      MATCH ENDED
+                    </div>
+                  ) : (
+                    <CountdownTimer targetDate={match.match_date} />
+                  )}
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '0.75rem', color: 'var(--neon-blue)' }}>
@@ -263,7 +269,9 @@ export default function PredictionPage() {
                   </div>
                   
                   <div className="match-vs">
-                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>VS</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: match.status === 'completed' ? 'var(--neon-green)' : 'inherit' }}>
+                      {match.status === 'completed' ? `${match.score_a} - ${match.score_b}` : 'VS'}
+                    </div>
                   </div>
                   
                   <div className="match-team">

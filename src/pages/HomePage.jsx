@@ -121,6 +121,32 @@ export default function HomePage() {
       <Modal isOpen={activeModal === 'spin'} onClose={() => setActiveModal(null)} title="Lucky Spin">
         <SpinModalContent />
       </Modal>
+
+      <Modal isOpen={activeModal === 'claim'} onClose={() => !claiming && setActiveModal(null)} title="🎉 Congratulations! 🎉">
+        <div style={{ textAlign: 'center', padding: '16px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🏆</div>
+          <h3 style={{ color: 'var(--neon-green)', marginBottom: '16px' }}>You Won Predictions!</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+            You have {unclaimedPredictions.length} unclaimed winning {unclaimedPredictions.length === 1 ? 'ticket' : 'tickets'}.
+          </p>
+          
+          <div style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid var(--gold)', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginBottom: '8px' }}>Total Reward</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--gold)' }}>
+              {formatNumberFull(unclaimedPredictions.reduce((acc, p) => acc + (p.reward || 0), 0))} Votes
+            </div>
+          </div>
+          
+          <button 
+            className="btn btn-primary btn-full btn-lg" 
+            onClick={handleClaimAll}
+            disabled={claiming}
+            style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}
+          >
+            {claiming ? 'CLAIMING...' : 'CLAIM ALL REWARDS'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -294,31 +320,6 @@ function SpinModalContent() {
       <button className="btn btn-gold btn-lg mt-lg btn-full" onClick={handleSpin} disabled={spinning}>
         {spinning ? 'SPINNING...' : 'SPIN NOW'}
       </button>
-      <Modal isOpen={activeModal === 'claim'} onClose={() => !claiming && setActiveModal(null)} title="🎉 Congratulations! 🎉">
-        <div style={{ textAlign: 'center', padding: '16px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🏆</div>
-          <h3 style={{ color: 'var(--neon-green)', marginBottom: '16px' }}>You Won Predictions!</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-            You have {unclaimedPredictions.length} unclaimed winning {unclaimedPredictions.length === 1 ? 'ticket' : 'tickets'}.
-          </p>
-          
-          <div style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid var(--gold)', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginBottom: '8px' }}>Total Reward</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--gold)' }}>
-              {formatNumberFull(unclaimedPredictions.reduce((acc, p) => acc + (p.reward || 0), 0))} Votes
-            </div>
-          </div>
-          
-          <button 
-            className="btn btn-primary btn-full btn-lg" 
-            onClick={handleClaimAll}
-            disabled={claiming}
-            style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}
-          >
-            {claiming ? 'CLAIMING...' : 'CLAIM ALL REWARDS'}
-          </button>
-        </div>
-      </Modal>
     </div>
   );
 }
