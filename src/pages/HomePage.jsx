@@ -133,7 +133,7 @@ function SpinModalContent() {
 
     setRotation(prev => prev + totalDelta);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setSpinning(false);
       const reward = segments[target];
       setWonPrize(reward);
