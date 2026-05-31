@@ -145,5 +145,32 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ success: true });
     }
+
+    if (action === 'claim') {
+      const { predictionId } = req.body;
+      
+      const { data: prediction } = await supabase.from('predictions')
+        .select('*')
+        .eq('id', predictionId)
+        .eq('user_id', user.id)
+        .single();
+        
+      if (!prediction) return res.status(404).json({ error: 'Prediction not found' });
+      if (!prediction.is_correct) return res.status(400).json({ error: 'Cannot claim a lost prediction' });
+      if (prediction.is_claimed) return res.status(400).json({ error: 'Reward already claimed' });
+      
+      const rewardAmount = Number(prediction.reward || 0);
+      
+      // 1. Add reward to user balance
+      const { data: dbUser } = await supabase.from('users').select('available_votes').eq('telegram_id', user.id).single();
+      await supabase.from('users').update({ 
+        available_votes: Number(dbUser.available_votes) + rewardAmount 
+      }).eq('telegram_id', user.id);
+      
+      // 2. Mark as claimed
+      await supabase.from('predictions').update({ is_claimed: true }).eq('id', predictionId);
+      
+      return res.status(200).json({ success: true, reward: rewardAmount });
+    }
   }
 }

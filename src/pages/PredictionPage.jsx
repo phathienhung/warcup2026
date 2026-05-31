@@ -155,6 +155,22 @@ export default function PredictionPage() {
     }
   };
 
+  const handleClaim = async (predictionId) => {
+    try {
+      const res = await api.claimPrediction(predictionId);
+      if (res.success) {
+        telegram.haptic.notification('success');
+        // Show success toast or alert
+        alert(`🎉 Successfully claimed ${formatNumber(res.reward)} votes!`);
+        await loadData();
+        await refreshUserBalance();
+      }
+    } catch (err) {
+      telegram.haptic.notification('error');
+      alert(err.message || 'Failed to claim reward');
+    }
+  };
+
   const getMultiplier = (match, type) => {
     const isWinnerMarket = ['A', 'B', 'DRAW'].includes(type);
     const outcomePool = match.outcomePools[type] || 0;
@@ -267,20 +283,45 @@ export default function PredictionPage() {
                       else label = `Score: ${label}`;
 
                       return (
-                        <div key={pred.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px', marginBottom: '4px' }}>
+                        <div key={pred.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px', marginBottom: '4px', borderLeft: pred.is_correct ? '3px solid var(--neon-green)' : (pred.is_correct === false ? '3px solid #ff4d4d' : 'none') }}>
                           <div>
-                            <span style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>{label}</span>
+                            <span style={{ color: pred.is_correct === false ? 'var(--text-secondary)' : 'var(--neon-green)', fontWeight: 'bold' }}>{label}</span>
                             <span style={{ fontSize: '0.75rem', marginLeft: '8px', color: 'var(--text-secondary)' }}>Staked: {formatNumber(pred.votes_staked)}</span>
+                            {pred.is_correct && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '4px', fontWeight: 'bold' }}>
+                                Won: {formatNumber(pred.reward)} votes
+                              </div>
+                            )}
                           </div>
-                          {!hasStarted && (
-                            <button 
-                              className="btn btn-secondary btn-sm" 
-                              onClick={() => handleUnstake(pred.id)}
-                              style={{ padding: '4px 8px', fontSize: '0.7rem', color: '#ff4d4d' }}
-                            >
-                              Unstake
-                            </button>
-                          )}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {!hasStarted && (
+                              <button 
+                                className="btn btn-secondary btn-sm" 
+                                onClick={() => handleUnstake(pred.id)}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', color: '#ff4d4d' }}
+                              >
+                                Unstake
+                              </button>
+                            )}
+                            
+                            {hasStarted && pred.is_correct && !pred.is_claimed && (
+                              <button 
+                                className="btn btn-primary btn-sm" 
+                                onClick={() => handleClaim(pred.id)}
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', background: 'var(--gold)', color: '#000' }}
+                              >
+                                CLAIM
+                              </button>
+                            )}
+                            
+                            {hasStarted && pred.is_correct && pred.is_claimed && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--neon-green)' }}>Claimed ✓</span>
+                            )}
+                            
+                            {hasStarted && pred.is_correct === false && (
+                              <span style={{ fontSize: '0.7rem', color: '#ff4d4d' }}>Lost</span>
+                            )}
+                          </div>
                         </div>
                       )
                     })}

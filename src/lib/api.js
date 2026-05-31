@@ -114,6 +114,10 @@ class ApiClient {
     return this.post('/prediction', { action: 'unstake', predictionId });
   }
 
+  claimPrediction(predictionId) {
+    return this.post('/prediction', { action: 'claim', predictionId });
+  }
+
   getMyPredictions() {
     return this.get('/prediction?action=myPredictions');
   }

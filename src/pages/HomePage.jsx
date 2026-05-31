@@ -17,7 +17,56 @@ export default function HomePage() {
   const [particles, setParticles] = useState([]);
   
   // Modals state
-  const [activeModal, setActiveModal] = useState(null); // 'rank', 'wallet', 'spin'
+  const [activeModal, setActiveModal] = useState(null); // 'rank', 'wallet', 'spin', 'claim'
+  const [unclaimedPredictions, setUnclaimedPredictions] = useState([]);
+  const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    checkUnclaimedRewards();
+  }, []);
+
+  const checkUnclaimedRewards = async () => {
+    try {
+      const preds = await api.getMyPredictions();
+      if (preds && preds.length > 0) {
+        const unclaimed = preds.filter(p => p.is_correct && !p.is_claimed);
+        if (unclaimed.length > 0) {
+          setUnclaimedPredictions(unclaimed);
+          setActiveModal('claim');
+          telegram.haptic.notification('success');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to check rewards', e);
+    }
+  };
+
+  const handleClaimAll = async () => {
+    setClaiming(true);
+    let totalWon = 0;
+    try {
+      for (const p of unclaimedPredictions) {
+        const res = await api.claimPrediction(p.id);
+        if (res.success) {
+          totalWon += res.reward;
+        }
+      }
+      telegram.haptic.notification('success');
+      alert(`🎉 Successfully claimed ${formatNumberFull(totalWon)} votes!`);
+      setActiveModal(null);
+      setUnclaimedPredictions([]);
+      
+      // Refresh balance
+      const data = await api.auth();
+      if (data?.user) {
+        useGameStore.getState().setGameState(data.user);
+      }
+    } catch (err) {
+      alert('Error claiming some rewards');
+    } finally {
+      setClaiming(false);
+    }
+  };
   
   const handleTap = (touches) => {
     const { success, votes } = tap(touches.length);
@@ -245,6 +294,31 @@ function SpinModalContent() {
       <button className="btn btn-gold btn-lg mt-lg btn-full" onClick={handleSpin} disabled={spinning}>
         {spinning ? 'SPINNING...' : 'SPIN NOW'}
       </button>
+      <Modal isOpen={activeModal === 'claim'} onClose={() => !claiming && setActiveModal(null)} title="🎉 Congratulations! 🎉">
+        <div style={{ textAlign: 'center', padding: '16px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🏆</div>
+          <h3 style={{ color: 'var(--neon-green)', marginBottom: '16px' }}>You Won Predictions!</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+            You have {unclaimedPredictions.length} unclaimed winning {unclaimedPredictions.length === 1 ? 'ticket' : 'tickets'}.
+          </p>
+          
+          <div style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid var(--gold)', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginBottom: '8px' }}>Total Reward</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--gold)' }}>
+              {formatNumberFull(unclaimedPredictions.reduce((acc, p) => acc + (p.reward || 0), 0))} Votes
+            </div>
+          </div>
+          
+          <button 
+            className="btn btn-primary btn-full btn-lg" 
+            onClick={handleClaimAll}
+            disabled={claiming}
+            style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}
+          >
+            {claiming ? 'CLAIMING...' : 'CLAIM ALL REWARDS'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
