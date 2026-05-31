@@ -110,6 +110,10 @@ class ApiClient {
     return this.post('/prediction', { action: 'predict', matchId, team, votesStaked });
   }
 
+  unstake(predictionId) {
+    return this.post('/prediction', { action: 'unstake', predictionId });
+  }
+
   getMyPredictions() {
     return this.get('/prediction?action=myPredictions');
   }
