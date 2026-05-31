@@ -156,7 +156,26 @@ export default function PredictionPage() {
   };
 
   const getMultiplier = (match, type) => {
-    return match.odds[type] || DEFAULT_ODDS[type] || 1.0;
+    const isWinnerMarket = ['A', 'B', 'DRAW'].includes(type);
+    const outcomePool = match.outcomePools[type] || 0;
+    
+    // Baseline odds from DB (used as starting point / display when no bets)
+    const baselineOdds = match.odds[type] || DEFAULT_ODDS[type] || 1.0;
+    
+    if (outcomePool === 0) return baselineOdds;
+
+    const winnerPool = (match.outcomePools['A'] || 0) + (match.outcomePools['B'] || 0) + (match.outcomePools['DRAW'] || 0);
+    const scorePool = Number(match.totalPool || 0) - winnerPool;
+    
+    const marketPool = isWinnerMarket ? winnerPool : scorePool;
+
+    if (marketPool <= outcomePool) return baselineOdds;
+
+    // Parimutuel Formula: (MarketPool * 0.95) / OutcomePool
+    const COMMISSION = 0.95;
+    const liveOdds = (marketPool * COMMISSION) / outcomePool;
+    
+    return parseFloat(liveOdds.toFixed(2));
   };
 
   if (loading && rawMatches.length === 0) {
@@ -213,8 +232,12 @@ export default function PredictionPage() {
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '0.75rem', color: 'var(--neon-blue)' }}>
-                  <div>Total Pool: {formatNumber(match.totalPool)}</div>
-                  <div>Users Staked: {formatNumber(match.totalUsers)}</div>
+                  <div>
+                    Winner Pool: {formatNumber((match.outcomePools['A']||0) + (match.outcomePools['B']||0) + (match.outcomePools['DRAW']||0))}
+                  </div>
+                  <div>
+                    Score Pool: {formatNumber(Number(match.totalPool || 0) - ((match.outcomePools['A']||0) + (match.outcomePools['B']||0) + (match.outcomePools['DRAW']||0)))}
+                  </div>
                 </div>
 
                 <div className="match-teams" onClick={() => !hasStarted && handleOpenModal(match)} style={{ cursor: hasStarted ? 'default' : 'pointer' }}>
@@ -272,6 +295,9 @@ export default function PredictionPage() {
       <Modal isOpen={!!selectedMatch} onClose={() => { if (!submitting) setSelectedMatch(null); }} title="Make Prediction">
         {selectedMatch && (
           <div>
+            <div style={{ background: 'rgba(255, 215, 0, 0.1)', border: '1px solid var(--gold)', padding: '8px', borderRadius: '4px', marginBottom: '16px', fontSize: '0.75rem', color: 'var(--gold)', textAlign: 'center' }}>
+              ⚠️ Odds are dynamic (Parimutuel). The multipliers shown below will adjust as more users place their stakes. Platform fee is 5%.
+            </div>
             <h3 className="mb-sm text-center">Match Outcome</h3>
             <div className="grid-3 mb-lg" style={{ gap: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
               <button 
