@@ -13,7 +13,7 @@ import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
-  const { totalVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, tap } = useGameStore();
+  const { totalVotes, availableVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, tap } = useGameStore();
   const [particles, setParticles] = useState([]);
   
   // Modals state
