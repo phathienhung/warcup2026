@@ -12,22 +12,16 @@ const DEFAULT_ODDS = {
   "A": 1.5,
   "B": 1.5,
   "DRAW": 3.0,
-  "1-0": 5.0,
-  "2-0": 6.5,
-  "2-1": 7.0,
-  "3-0": 12.0,
-  "3-1": 15.0,
-  "3-2": 25.0,
-  "0-0": 8.0,
-  "1-1": 6.0,
-  "2-2": 14.0
+  "1-0": 5.0, "2-0": 6.5, "2-1": 7.0, "3-0": 12.0, "3-1": 15.0, "3-2": 25.0,
+  "0-1": 5.0, "0-2": 6.5, "1-2": 7.0, "0-3": 12.0, "1-3": 15.0, "2-3": 25.0,
+  "0-0": 8.0, "1-1": 6.0, "2-2": 14.0, "3-3": 20.0
 };
 
-const SCORE_OPTIONS = [
-  { label: '1-0' }, { label: '2-0' }, { label: '2-1' },
-  { label: '3-0' }, { label: '3-1' }, { label: '3-2' },
-  { label: '0-0' }, { label: '1-1' }, { label: '2-2' },
-];
+const SCORE_GROUPS = {
+  "A": ['1-0', '2-0', '2-1', '3-0', '3-1', '3-2'],
+  "B": ['0-1', '0-2', '1-2', '0-3', '1-3', '2-3'],
+  "DRAW": ['0-0', '1-1', '2-2', '3-3']
+};
 
 export default function PredictionPage() {
   const storeNations = useGameStore(s => s.nations);
@@ -41,7 +35,8 @@ export default function PredictionPage() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   
   // Modal state
-  const [outcome, setOutcome] = useState('A'); // 'A', 'B', 'DRAW', or '1-0', etc.
+  const [selectedTeam, setSelectedTeam] = useState('A'); // 'A', 'B', 'DRAW'
+  const [selectedScore, setSelectedScore] = useState(null); // '1-0', etc.
   const [stake, setStake] = useState(100);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,7 +96,6 @@ export default function PredictionPage() {
       obj[m.stage].push(m);
     });
 
-    // Assign matchday based on index (2 matches per matchday for a group of 4)
     Object.keys(obj).forEach(group => {
       obj[group] = obj[group].map((m, index) => ({
         ...m,
@@ -114,16 +108,19 @@ export default function PredictionPage() {
 
   const handleOpenModal = (match) => {
     setSelectedMatch(match);
-    setOutcome('A');
+    setSelectedTeam('A');
+    setSelectedScore(null);
     setStake(100);
   };
 
   const handlePredict = async () => {
     if (stake < 100) return alert('Minimum stake is 100 votes.');
     
+    const finalOutcome = selectedScore || selectedTeam;
+    
     setSubmitting(true);
     try {
-      const res = await api.predict(selectedMatch.id, outcome, stake);
+      const res = await api.predict(selectedMatch.id, finalOutcome, stake);
       if (res.success) {
         telegram.haptic.notification('success');
         await loadData();
@@ -206,13 +203,11 @@ export default function PredictionPage() {
               )}
               
               <div className="match-card mb-md">
-                {/* Match Header info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <div>{timeStr} - {dateStr}</div>
                   <CountdownTimer targetDate={match.match_date} />
                 </div>
                 
-                {/* Global Pool Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '0.75rem', color: 'var(--neon-blue)' }}>
                   <div>Total Pool: {formatNumber(match.totalPool)}</div>
                   <div>Users Staked: {formatNumber(match.totalUsers)}</div>
@@ -234,7 +229,6 @@ export default function PredictionPage() {
                   </div>
                 </div>
                 
-                {/* User's Prediction Records for this match */}
                 {matchPredictions.length > 0 && (
                   <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Your Stakes:</div>
@@ -277,8 +271,8 @@ export default function PredictionPage() {
             <h3 className="mb-sm text-center">Match Outcome</h3>
             <div className="grid-3 mb-lg" style={{ gap: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
               <button 
-                className={`btn ${outcome === 'A' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                onClick={() => setOutcome('A')}
+                className={`btn ${selectedTeam === 'A' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                onClick={() => { setSelectedTeam('A'); setSelectedScore(null); }}
                 style={{ padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               >
                 <div>{selectedMatch.teamA.name}</div>
@@ -290,8 +284,8 @@ export default function PredictionPage() {
               </button>
               
               <button 
-                className={`btn ${outcome === 'DRAW' ? 'btn-gold' : 'btn-secondary'} btn-sm`}
-                onClick={() => setOutcome('DRAW')}
+                className={`btn ${selectedTeam === 'DRAW' ? 'btn-gold' : 'btn-secondary'} btn-sm`}
+                onClick={() => { setSelectedTeam('DRAW'); setSelectedScore(null); }}
                 style={{ padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               >
                 <div>Draw</div>
@@ -303,8 +297,8 @@ export default function PredictionPage() {
               </button>
               
               <button 
-                className={`btn ${outcome === 'B' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                onClick={() => setOutcome('B')}
+                className={`btn ${selectedTeam === 'B' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                onClick={() => { setSelectedTeam('B'); setSelectedScore(null); }}
                 style={{ padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               >
                 <div>{selectedMatch.teamB.name}</div>
@@ -316,31 +310,35 @@ export default function PredictionPage() {
               </button>
             </div>
 
-            <h3 className="mb-sm text-center">Correct Score</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '24px' }}>
-              {SCORE_OPTIONS.map(opt => {
-                const isSelected = outcome === opt.label;
-                const pool = selectedMatch.outcomePools[opt.label] || 0;
-                const users = selectedMatch.outcomeUsers[opt.label] || 0;
-                
-                return (
-                  <button
-                    key={opt.label}
-                    className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                    onClick={() => setOutcome(opt.label)}
-                    style={{ padding: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                  >
-                    <div>{opt.label}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)' }}>x{getMultiplier(selectedMatch, opt.label)}</div>
-                    {pool > 0 && (
-                      <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                        P: {formatNumber(pool)} | U: {users}
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+            {selectedTeam && (
+              <>
+                <h3 className="mb-sm text-center">Correct Score (Optional)</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '24px' }}>
+                  {SCORE_GROUPS[selectedTeam].map(scoreStr => {
+                    const isSelected = selectedScore === scoreStr;
+                    const pool = selectedMatch.outcomePools[scoreStr] || 0;
+                    const users = selectedMatch.outcomeUsers[scoreStr] || 0;
+                    
+                    return (
+                      <button
+                        key={scoreStr}
+                        className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setSelectedScore(isSelected ? null : scoreStr)}
+                        style={{ padding: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      >
+                        <div>{scoreStr}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--neon-green)' }}>x{getMultiplier(selectedMatch, scoreStr)}</div>
+                        {pool > 0 && (
+                          <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            P: {formatNumber(pool)} | U: {users}
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
 
             <div className="card mb-lg" style={{ padding: '16px' }}>
               <h3 className="mb-sm text-center">Stake Votes</h3>
@@ -372,7 +370,7 @@ export default function PredictionPage() {
               disabled={submitting}
               style={{ opacity: submitting ? 0.7 : 1 }}
             >
-              {submitting ? 'PROCESSING...' : `CONFIRM ${outcome} PREDICTION`}
+              {submitting ? 'PROCESSING...' : `CONFIRM ${selectedScore || selectedTeam} PREDICTION`}
             </button>
           </div>
         )}

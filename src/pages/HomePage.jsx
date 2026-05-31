@@ -55,7 +55,7 @@ export default function HomePage() {
       </div>
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px', zIndex: 5 }}>
-        <VoteCounter value={totalVotes} />
+        <VoteCounter value={availableVotes} />
         <TapBall onTap={handleTap} />
       </div>
 
