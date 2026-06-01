@@ -4,7 +4,6 @@ import useGameStore from '../store/gameStore';
 import useUserStore from '../store/userStore';
 import Modal from '../components/Modal';
 import CountdownTimer from '../components/CountdownTimer';
-import TutorialSpotlight from '../components/TutorialSpotlight';
 import { formatNumber } from '../data/constants';
 import telegram from '../lib/telegram';
 import api from '../lib/api';
@@ -38,19 +37,15 @@ export default function PredictionPage() {
   
   const [selectedGroup, setSelectedGroup] = useState('Group A');
   const [selectedMatch, setSelectedMatch] = useState(null);
-  const [selectedTeam, setSelectedTeam] = useState(null);
-  const [selectedScore, setSelectedScore] = useState(null);
+  
+  // Modal state
+  const [selectedTeam, setSelectedTeam] = useState('A'); // 'A', 'B', 'DRAW'
+  const [selectedScore, setSelectedScore] = useState(null); // '1-0', etc.
   const [stake, setStake] = useState(1000);
   const [submitting, setSubmitting] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     loadData();
-    
-    // Check if we need to show tutorial
-    if (localStorage.getItem('show_prediction_tutorial') === 'true') {
-      setShowTutorial(true);
-    }
   }, []);
 
   const loadData = async () => {
@@ -204,7 +199,7 @@ export default function PredictionPage() {
   }
 
   return (
-    <div className="page" style={{ position: 'relative' }}>
+    <div className="page">
       <div className="page-header">
         <h1 className="page-title">Predictions</h1>
         <div className="page-subtitle">Predict all World Cup 2026 matches</div>
@@ -436,12 +431,15 @@ export default function PredictionPage() {
                 className="input mb-sm"
                 style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
                 value={stake}
-                onChange={(e) => setStake(Number(e.target.value))}
+                onChange={(e) => {
+                  const v = Math.max(1000, Math.round(Number(e.target.value) / 1000) * 1000);
+                  setStake(Math.min(v, useGameStore.getState().availableVotes));
+                }}
               />
               <input 
                 type="range" 
                 min="1000" 
-                max={Math.max(1000, useGameStore.getState().availableVotes)} 
+                max={Math.max(1000, Math.floor(useGameStore.getState().availableVotes / 1000) * 1000)} 
                 step="1000" 
                 value={stake} 
                 onChange={(e) => setStake(Number(e.target.value))}
@@ -460,13 +458,6 @@ export default function PredictionPage() {
           </div>
         )}
       </Modal>
-
-      {showTutorial && (
-        <TutorialSpotlight onComplete={() => {
-          setShowTutorial(false);
-          localStorage.removeItem('show_prediction_tutorial');
-        }} />
-      )}
     </div>
   );
 }

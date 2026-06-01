@@ -65,34 +65,45 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Already claimed today' });
         }
 
-        // Get config for the current day (modulo 7 if streak > 7, or cap at 7)
-        let rewardDay = dbUser.login_streak || 1;
-        if (rewardDay > 7) rewardDay = ((rewardDay - 1) % 7) + 1;
+        // Increment streak (capped at 7, reset after 7)
+        const currentStreak = dbUser.login_streak || 0;
+        const newStreak = currentStreak >= 7 ? 1 : currentStreak + 1;
+
+        // Read per-day reward config from streak_rewards table
+        // Fallback to defaults if table doesn't exist
+        let speedReward = 1;
+        let maxEnergyReward = 100;
         
-        const { data: config } = await supabase.from('daily_rewards_config').select('reward_type, reward_value').eq('day', rewardDay).single();
-        
-        const rewardType = config?.reward_type || 'speed';
-        const rewardValue = config?.reward_value || 1;
-        
-        const updates = { last_streak_claim: today };
-        
-        if (rewardType === 'speed') {
-          updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + rewardValue;
-        } else if (rewardType === 'regen') {
-          updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + rewardValue;
-        } else if (rewardType === 'max_energy') {
-          updates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
-        } else if (rewardType === 'votes') {
-          // If giving votes, we should update total_votes and available_votes instead of users table stats
-          // but we will update it below using an RPC if needed. 
-          // For now let's just add to users table if we decide to store a bonus, or run a direct increment.
-          const { data: currentVotes } = await supabase.from('users').select('total_votes, available_votes').eq('telegram_id', user.id).single();
-          updates.total_votes = (currentVotes?.total_votes || 0) + rewardValue;
-          updates.available_votes = (currentVotes?.available_votes || 0) + rewardValue;
+        try {
+          const { data: streakConfig } = await supabase
+            .from('streak_rewards')
+            .select('speed_reward, max_energy_reward')
+            .eq('day', newStreak)
+            .single();
+          if (streakConfig) {
+            speedReward = streakConfig.speed_reward || 1;
+            maxEnergyReward = streakConfig.max_energy_reward || 100;
+          }
+        } catch (e) {
+          // Table may not exist yet, use defaults
         }
 
+        const updates = {
+          last_streak_claim: today,
+          login_streak: newStreak,
+          mining_speed_bonus: (dbUser.mining_speed_bonus || 0) + speedReward,
+          max_energy: (dbUser.max_energy || 1000) + maxEnergyReward
+        };
+
         await supabase.from('users').update(updates).eq('telegram_id', user.id);
-        return res.status(200).json({ success: true, rewardType, rewardValue, rewardDay });
+        return res.status(200).json({ 
+          success: true, 
+          day: newStreak,
+          speedReward,
+          maxEnergyReward,
+          rewardType: 'streak',
+          rewardValue: `+${speedReward} Speed, +${maxEnergyReward} Max Energy`
+        });
       } catch (e) {
         console.error('Claim streak error:', e);
         return res.status(500).json({ error: 'Server error' });

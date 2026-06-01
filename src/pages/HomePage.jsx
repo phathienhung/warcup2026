@@ -22,12 +22,10 @@ export default function HomePage() {
   const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
-    checkStartupModals();
+    checkUnclaimedRewards();
   }, []);
 
-  const checkStartupModals = async () => {
-    // 1. Check for unclaimed rewards
-    let hasClaims = false;
+  const checkUnclaimedRewards = async () => {
     try {
       const preds = await api.getMyPredictions();
       if (preds && preds.length > 0) {
@@ -36,30 +34,10 @@ export default function HomePage() {
           setUnclaimedPredictions(unclaimed);
           setActiveModal('claim');
           telegram.haptic.notification('success');
-          hasClaims = true;
         }
       }
     } catch (e) {
       console.error('Failed to check rewards', e);
-    }
-
-    if (hasClaims) return; // Prioritize claim modal
-
-    // 2. Check if new user (no tutorial seen)
-    const hasSeenTutorial = localStorage.getItem('tutorial_completed');
-    if (!hasSeenTutorial) {
-      localStorage.setItem('tutorial_completed', 'true');
-      localStorage.setItem('show_prediction_tutorial', 'true');
-      // Redirect to prediction page to show tutorial
-      window.location.hash = '#/prediction'; 
-      return;
-    }
-
-    // 3. Show Game Logs / Announcements if not seen
-    const lastLogSeen = localStorage.getItem('last_log_seen');
-    const CURRENT_LOG_VERSION = 'v1.0'; // You can update this to show new logs
-    if (lastLogSeen !== CURRENT_LOG_VERSION) {
-      setActiveModal('logs');
     }
   };
 
@@ -166,29 +144,6 @@ export default function HomePage() {
             style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}
           >
             {claiming ? 'CLAIMING...' : 'CLAIM ALL REWARDS'}
-          </button>
-        </div>
-      </Modal>
-
-      <Modal isOpen={activeModal === 'logs'} onClose={() => {
-        localStorage.setItem('last_log_seen', 'v1.0');
-        setActiveModal(null);
-      }} title="📰 Game Announcements">
-        <div style={{ padding: '16px', lineHeight: '1.5' }}>
-          <h3 style={{ color: 'var(--neon-green)', marginBottom: '12px' }}>Welcome to World Cup Mining War 2026!</h3>
-          <ul style={{ paddingLeft: '20px', color: '#fff', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <li><strong>Parimutuel Betting:</strong> Our unique P2P betting system means you play against other users, not the house! The odds change dynamically based on where the money flows.</li>
-            <li><strong>Daily Check-in:</strong> Don't forget to claim your daily rewards in the Tasks tab to boost your mining speed and energy!</li>
-            <li><strong>Tutorial:</strong> If you missed the betting tutorial, you can always replay it from your Profile page!</li>
-          </ul>
-          <button 
-            className="btn btn-primary btn-full mt-lg"
-            onClick={() => {
-              localStorage.setItem('last_log_seen', 'v1.0');
-              setActiveModal(null);
-            }}
-          >
-            GOT IT
           </button>
         </div>
       </Modal>

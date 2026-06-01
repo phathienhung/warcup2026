@@ -79,7 +79,9 @@ export default function TasksPage() {
   const today = new Date().toISOString().split('T')[0];
   const lastStreakClaim = user?.last_streak_claim;
   const canClaimStreak = lastStreakClaim !== today;
-  const streakDay = Math.min(loginStreak || 1, 7);
+  // streakDay = the day that was LAST claimed. Next day to claim = streakDay + 1.
+  const claimedDays = Math.min(loginStreak || 0, 7);
+  const nextDay = claimedDays >= 7 ? 1 : claimedDays + 1;
 
   const handleClaimStreak = async () => {
     if (!canClaimStreak || claimingStreak) return;
@@ -90,11 +92,12 @@ export default function TasksPage() {
       if (res.success) {
         telegram.haptic.notification('success');
         useUserStore.setState(s => ({ 
-          user: { ...s.user, last_streak_claim: today } 
+          loginStreak: res.day,
+          user: { ...s.user, last_streak_claim: today, login_streak: res.day } 
         }));
         // Refresh full user stats to update UI instantly
         await refreshUserStats();
-        alert(`Streak Claimed! +${res.rewardValue} ${res.rewardType}`);
+        alert(`🎉 Day ${res.day} Streak Claimed!\n${res.rewardValue}`);
       }
     } catch (e) {
       const msg = e?.message || 'Failed to claim streak';
@@ -200,18 +203,21 @@ export default function TasksPage() {
             onClick={handleClaimStreak}
           >
             <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-              {canClaimStreak ? '🎁 Tap to claim daily streak!' : '✅ Come back tomorrow!'}
+              {canClaimStreak ? `🎁 Tap to claim Day ${nextDay} streak!` : '✅ Come back tomorrow!'}
             </h3>
             <div className="streak-calendar">
               {[1, 2, 3, 4, 5, 6, 7].map(day => (
-                <div key={day} className={`streak-day ${day <= streakDay ? 'active' : ''} ${day === streakDay && canClaimStreak ? 'today' : ''}`}>
+                <div key={day} className={`streak-day ${day <= claimedDays ? 'active' : ''} ${day === nextDay && canClaimStreak ? 'today' : ''}`}>
                   Day {day}
                 </div>
               ))}
             </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--neon-green)', marginTop: '8px' }}>
+              Reward: +Speed & +Max Energy
+            </div>
             {canClaimStreak && (
               <button className="btn btn-primary btn-sm mt-md" disabled={claimingStreak} style={{ marginTop: '12px' }}>
-                {claimingStreak ? 'Claiming...' : 'Claim Streak'}
+                {claimingStreak ? 'Claiming...' : `Claim Day ${nextDay}`}
               </button>
             )}
           </div>

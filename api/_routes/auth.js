@@ -43,25 +43,16 @@ export default async function handler(req, res) {
       dbUser = newUser;
     } else {
       // Update login streak and last login
-      const lastLoginDate = new Date(dbUser.last_login || new Date()).toISOString().split('T')[0];
+      const lastLogin = new Date(dbUser.last_login || new Date());
       const now = new Date();
-      const nowDate = now.toISOString().split('T')[0];
+      const diffHours = (now - lastLogin) / (1000 * 60 * 60);
+      const diffMs = now - lastLogin;
       
-      let newStreak = dbUser.login_streak || 1;
-      
-      if (lastLoginDate !== nowDate) {
-        // It's a new day
-        const yesterday = new Date(now);
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-        const yesterdayDate = yesterday.toISOString().split('T')[0];
-        
-        if (lastLoginDate === yesterdayDate) {
-          // Logged in yesterday, increment streak
-          newStreak += 1;
-        } else {
-          // Missed a day, reset streak
-          newStreak = 1;
-        }
+      let newStreak = dbUser.login_streak;
+      if (diffHours > 24 && diffHours < 48) {
+        newStreak += 1;
+      } else if (diffHours >= 48) {
+        newStreak = 1;
       }
 
       // Get friend count for mining speed calculation
