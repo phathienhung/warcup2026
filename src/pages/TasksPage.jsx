@@ -17,28 +17,7 @@ export default function TasksPage() {
   const [claimingStreak, setClaimingStreak] = useState(false);
   const [processingTask, setProcessingTask] = useState(null);
 
-  const sortedTasks = [...tasks].sort((a, b) => {
-    const aDone = a.status === 'claimed';
-    const bDone = b.status === 'claimed';
-    if (aDone === bDone) return 0;
-    return aDone ? 1 : -1;
-  });
 
-  const sortedAchievements = [...(achievements || [])].sort((a, b) => {
-    const aMet = isAchievementMet(a.id);
-    const bMet = isAchievementMet(b.id);
-    const aClaimed = claimedAchievements.includes(a.id);
-    const bClaimed = claimedAchievements.includes(b.id);
-    
-    const aReady = aMet && !aClaimed;
-    const bReady = bMet && !bClaimed;
-
-    if (aReady === bReady) {
-      if (aClaimed === bClaimed) return 0;
-      return aClaimed ? 1 : -1;
-    }
-    return aReady ? -1 : 1;
-  });
 
   // Check if an achievement is met based on user stats
   const isAchievementMet = useCallback((id) => {
@@ -63,6 +42,29 @@ export default function TasksPage() {
       default: return false;
     }
   }, [user]);
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aDone = a.status === 'claimed';
+    const bDone = b.status === 'claimed';
+    if (aDone === bDone) return 0;
+    return aDone ? 1 : -1;
+  });
+
+  const sortedAchievements = [...(achievements || [])].sort((a, b) => {
+    const aMet = isAchievementMet(a.id);
+    const bMet = isAchievementMet(b.id);
+    const aClaimed = claimedAchievements.includes(a.id);
+    const bClaimed = claimedAchievements.includes(b.id);
+    
+    const aReady = aMet && !aClaimed;
+    const bReady = bMet && !bClaimed;
+
+    if (aReady === bReady) {
+      if (aClaimed === bClaimed) return 0;
+      return aClaimed ? 1 : -1;
+    }
+    return aReady ? -1 : 1;
+  });
 
   // Fetch tasks from API on mount
   useEffect(() => {
