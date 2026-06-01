@@ -6,15 +6,20 @@
 
 -- 1. BẢNG CẤU HÌNH HỆ THỐNG
 CREATE TABLE IF NOT EXISTS game_config (
-  id INT PRIMARY KEY,
-  seed_min INT DEFAULT 10000,
-  seed_max INT DEFAULT 50000,
-  max_multiplier FLOAT DEFAULT 15.0
+  id INT PRIMARY KEY
 );
+
+-- Thêm các cột nếu chưa có (Phòng trường hợp bảng game_config đã tồn tại từ trước)
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_min INT DEFAULT 10000;
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_max INT DEFAULT 50000;
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS max_multiplier FLOAT DEFAULT 15.0;
 
 INSERT INTO game_config (id, seed_min, seed_max, max_multiplier) 
 VALUES (1, 10000, 50000, 15.0) 
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO UPDATE 
+SET seed_min = EXCLUDED.seed_min,
+    seed_max = EXCLUDED.seed_max,
+    max_multiplier = EXCLUDED.max_multiplier;
 
 -- 2. THÊM CỘT SEED VÀO BẢNG MATCHES
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_a BIGINT DEFAULT 0;
