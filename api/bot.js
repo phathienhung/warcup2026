@@ -30,6 +30,10 @@ if (bot) {
     await ctx.reply('This is the World Cup Mining War 2026 bot. Tap "Play Now" to launch the mini app!');
   });
   
+  bot.command('ping', async (ctx) => {
+    await ctx.reply('Pong! Webhook is working perfectly.');
+  });
+  
   bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
   bot.on('message:successful_payment', async (ctx) => {
     await ctx.reply('Thank you for your purchase! The items have been added to your account.');
@@ -38,10 +42,15 @@ if (bot) {
   // Handle Admin button clicks (Confirm / Reject withdraw)
   bot.on('callback_query:data', async (ctx) => {
     const cbData = ctx.callbackQuery.data;
-    console.log('[BOT] callback_query received:', cbData, 'from:', ctx.from?.id);
+    const adminChatId = process.env.ADMIN_CHAT_ID?.trim();
+    
+    // DEBUG 1: Send message that we received the click
+    if (adminChatId) {
+      try { await bot.api.sendMessage(adminChatId, `[DEBUG] Webhook triggered! Action: ${cbData}`); } catch (e) {}
+    }
 
     if (!db) {
-      console.error('[BOT] No database connection');
+      if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] ERROR: DB is not configured (Missing Supabase env vars)`); } catch (e) {} }
       return ctx.answerCallbackQuery({ text: 'DB not configured', show_alert: true });
     }
 
@@ -58,7 +67,7 @@ if (bot) {
           .eq('id', txId)
           .single();
 
-        console.log('[BOT] tx lookup result:', tx ? tx.id : 'null', 'error:', txErr?.message);
+        if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] Found Tx: ${tx ? tx.id : 'null'} | Error: ${txErr?.message || 'none'}`); } catch (e) {} }
 
         if (txErr || !tx) {
           return ctx.answerCallbackQuery({ text: 'Transaction not found', show_alert: true });
@@ -74,9 +83,11 @@ if (bot) {
           .eq('id', txId);
 
         if (updateErr) {
-          console.error('[BOT] update error:', updateErr.message);
+          if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] DB update error: ${updateErr.message}`); } catch (e) {} }
           return ctx.answerCallbackQuery({ text: 'DB update failed', show_alert: true });
         }
+
+        if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] Tx marked as completed.`); } catch (e) {} }
 
         // 3. Get username for public message
         const { data: txUser } = await db
@@ -154,7 +165,7 @@ if (bot) {
       return ctx.answerCallbackQuery({ text: 'Unknown action', show_alert: true });
 
     } catch (e) {
-      console.error('[BOT] callback error:', e);
+      if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] FATAL CATCH BLOCK: ${e.message}`); } catch (err) {} }
       return ctx.answerCallbackQuery({ text: `Error: ${e.message?.slice(0, 50)}`, show_alert: true });
     }
   });
