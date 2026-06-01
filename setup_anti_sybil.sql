@@ -9,12 +9,23 @@ CREATE TABLE IF NOT EXISTS game_config (
   id INT PRIMARY KEY
 );
 
+-- Tạo ENUM cho seed_mode để Supabase hiển thị dưới dạng dropdown
+DO $$ BEGIN
+    CREATE TYPE seed_mode_enum AS ENUM ('fixed', 'dynamic');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 -- Thêm các cột nếu chưa có (Phòng trường hợp bảng game_config đã tồn tại từ trước)
-ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_mode TEXT DEFAULT 'dynamic';
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_mode seed_mode_enum DEFAULT 'dynamic';
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_fixed INT DEFAULT 50000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_min INT DEFAULT 10000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_max INT DEFAULT 50000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS max_multiplier FLOAT DEFAULT 15.0;
+
+-- Chuyển đổi cột seed_mode sang kiểu enum nếu nó đang là text
+ALTER TABLE game_config ALTER COLUMN seed_mode TYPE seed_mode_enum USING seed_mode::seed_mode_enum;
+ALTER TABLE game_config ALTER COLUMN seed_mode SET DEFAULT 'dynamic'::seed_mode_enum;
 
 -- Xóa các cột bị trùng lặp / dư thừa (vì đã có bảng streak_rewards riêng)
 ALTER TABLE game_config DROP COLUMN IF EXISTS streak_reward_type;
