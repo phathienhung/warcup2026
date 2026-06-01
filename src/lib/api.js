@@ -203,6 +203,11 @@ class ApiClient {
   getSpinInfo() {
     return this.get('/spin');
   }
+
+  // ── Announcements ───────────────────────────────────
+  getAnnouncements() {
+    return this.get('/announcements');
+  }
 }
 
 class ApiError extends Error {

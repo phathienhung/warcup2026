@@ -20,10 +20,59 @@ export default function HomePage() {
   const [activeModal, setActiveModal] = useState(null); // 'rank', 'wallet', 'spin', 'claim'
   const [unclaimedPredictions, setUnclaimedPredictions] = useState([]);
   const [claiming, setClaiming] = useState(false);
+  const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
-    checkUnclaimedRewards();
+    startupSequence();
   }, []);
+
+  const startupSequence = async () => {
+    // 1. Check if new user
+    const isNew = useUserStore.getState().totalTaps === 0 && !localStorage.getItem('guide_seen');
+    if (isNew) {
+      setActiveModal('guide');
+      return; // Stop here, rest will trigger on close
+    }
+    
+    checkAnnouncementsAndRewards();
+  };
+
+  const checkAnnouncementsAndRewards = async () => {
+    // 2. Fetch announcements
+    try {
+      const anns = await api.getAnnouncements();
+      if (anns && anns.length > 0) {
+        const latest = anns[0]; // Assuming sorted by latest
+        const seenIds = JSON.parse(localStorage.getItem('seen_announcements') || '[]');
+        if (!seenIds.includes(latest.id)) {
+          setAnnouncement(latest);
+          setActiveModal('announcement');
+          return; // Wait for close to check rewards
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load announcements', e);
+    }
+    
+    // 3. Check Rewards
+    checkUnclaimedRewards();
+  };
+
+  const handleCloseGuide = () => {
+    localStorage.setItem('guide_seen', 'true');
+    setActiveModal(null);
+    checkAnnouncementsAndRewards();
+  };
+
+  const handleCloseAnnouncement = () => {
+    if (announcement) {
+      const seenIds = JSON.parse(localStorage.getItem('seen_announcements') || '[]');
+      seenIds.push(announcement.id);
+      localStorage.setItem('seen_announcements', JSON.stringify(seenIds));
+    }
+    setActiveModal(null);
+    checkUnclaimedRewards();
+  };
 
   const checkUnclaimedRewards = async () => {
     try {
@@ -146,6 +195,39 @@ export default function HomePage() {
             {claiming ? 'CLAIMING...' : 'CLAIM ALL REWARDS'}
           </button>
         </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'guide'} onClose={handleCloseGuide} title="📖 Welcome to Prediction Mode!">
+        <div style={{ padding: '16px' }}>
+          <div style={{ textAlign: 'center', fontSize: '3rem', marginBottom: '16px' }}>⚽</div>
+          <h3 style={{ color: 'var(--neon-green)', textAlign: 'center', marginBottom: '16px' }}>How to Predict</h3>
+          <ul style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.5', paddingLeft: '20px', marginBottom: '24px' }}>
+            <li style={{ marginBottom: '8px' }}>Tap the <strong>Predict</strong> tab below and select an upcoming match.</li>
+            <li style={{ marginBottom: '8px' }}>Predict the <strong>Winner</strong> (Team A, Draw, or Team B).</li>
+            <li style={{ marginBottom: '8px' }}>You can also predict the <strong>Correct Score</strong> for higher rewards! (Tap a score to select, tap again to deselect).</li>
+            <li>Wait for the match to end. If you win, come back to Claim your Votes!</li>
+          </ul>
+          <button className="btn btn-primary btn-full btn-lg" onClick={handleCloseGuide}>
+            GOT IT!
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'announcement'} onClose={handleCloseAnnouncement} title="📢 Latest Announcement">
+        {announcement && (
+          <div style={{ padding: '16px' }}>
+            <div style={{ textAlign: 'center', fontSize: '3rem', marginBottom: '16px' }}>
+              {announcement.type === 'feature' ? '🚀' : announcement.type === 'warning' ? '⚠️' : 'ℹ️'}
+            </div>
+            <h3 style={{ color: 'var(--neon-blue)', textAlign: 'center', marginBottom: '16px' }}>{announcement.title}</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '24px' }}>
+              {announcement.content}
+            </p>
+            <button className="btn btn-primary btn-full btn-lg" onClick={handleCloseAnnouncement}>
+              CLOSE
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );

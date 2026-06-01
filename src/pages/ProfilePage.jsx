@@ -6,15 +6,99 @@ import { formatNumber } from '../data/constants';
 import { NATIONS } from '../data/countries';
 import ShareCard from '../components/ShareCard';
 import telegram from '../lib/telegram';
+import Modal from '../components/Modal';
+
+// ── Roadmap Data ──
+const ROADMAP = [
+  {
+    phase: 1,
+    title: 'Mining Votes',
+    status: 'active',
+    icon: '⛏️',
+    description: 'Tap to mine Votes and prepare for Phase 2. Complete daily tasks, invite friends, and collect NFTs to boost your mining speed.',
+    items: ['Tap-to-Mine system', 'Daily tasks & streak rewards', 'NFT collection & equip', 'Referral system', 'Lucky spin wheel']
+  },
+  {
+    phase: 2,
+    title: 'World Cup 2026 Predictions',
+    status: 'upcoming',
+    icon: '⚽',
+    description: 'Use your mined Votes (or buy more in Shop) to predict match outcomes and win big from the Parimutuel pool!',
+    items: ['Predict match winners', 'Predict correct scores', 'Dynamic odds (Parimutuel)', 'Claim rewards system', 'Live pool tracking']
+  },
+  {
+    phase: 3,
+    title: 'Play Football',
+    status: 'locked',
+    icon: '🎮',
+    description: 'After World Cup 2026 ends, a new football mini-game mode will be unlocked!',
+    items: ['PvE Mode: Human vs Bot', 'PvP Mode: Human vs Human', 'Tournament system', 'Leaderboard rankings']
+  },
+  {
+    phase: 4,
+    title: 'Coming Soon',
+    status: 'locked',
+    icon: '🚀',
+    description: 'More exciting features are being developed. Stay tuned for updates!',
+    items: ['TON blockchain integration', 'Marketplace', 'Governance voting', 'And more...']
+  }
+];
+
+// ── Prediction Guide Steps ──
+const GUIDE_STEPS = [
+  {
+    step: 1,
+    icon: '👆',
+    title: 'Open Predictions Tab',
+    description: 'Tap the ⚽ Predict tab at the bottom navigation bar to see all World Cup 2026 matches.'
+  },
+  {
+    step: 2,
+    icon: '📋',
+    title: 'Select a Match',
+    description: 'Tap on any match card to open the prediction modal. You can only predict matches that haven\'t started yet.'
+  },
+  {
+    step: 3,
+    icon: '🏆',
+    title: 'Choose Team Winner',
+    description: 'Select which team you think will win (Team A, Draw, or Team B). The dynamic odds (multiplier) are shown below each option.'
+  },
+  {
+    step: 4,
+    icon: '🎯',
+    title: 'Choose Correct Score (Optional)',
+    description: 'For higher odds, you can also predict the exact score. Tap a score button to select it. Tap again to deselect if you only want to bet on the winner.'
+  },
+  {
+    step: 5,
+    icon: '💰',
+    title: 'Set Your Stake',
+    description: 'Use the slider to set how many Votes to stake (minimum 1,000). Higher stakes = higher potential rewards.'
+  },
+  {
+    step: 6,
+    icon: '📊',
+    title: 'Understanding Parimutuel Odds',
+    description: 'Odds change dynamically based on how much everyone bets. Your reward = Pool × 0.95 × (Your Stake / Winning Side Total). Platform takes 5% fee.'
+  },
+  {
+    step: 7,
+    icon: '🎉',
+    title: 'Claim Your Rewards',
+    description: 'After a match ends, if you predicted correctly, a CLAIM button appears. You can also claim from the popup when you open the app!'
+  }
+];
 
 export default function ProfilePage() {
   const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount, telegramId } = useUserStore();
   const { tapCount } = useGameStore();
-  const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends' | 'nfts'
+  const [activeTab, setActiveTab] = useState('stats');
   const [myNfts, setMyNfts] = useState([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
   const [friendsList, setFriendsList] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
   
   const nations = useGameStore(s => s.nations) || [];
 
@@ -23,6 +107,8 @@ export default function ProfilePage() {
       loadNfts();
     } else if (activeTab === 'friends') {
       loadFriends();
+    } else if (activeTab === 'log') {
+      loadAnnouncements();
     }
   }, [activeTab]);
 
@@ -49,6 +135,21 @@ export default function ProfilePage() {
       setLoadingNfts(false);
     }
   };
+
+  const loadAnnouncements = async () => {
+    try {
+      const data = await api.getAnnouncements();
+      setAnnouncements(data || []);
+    } catch (err) {
+      console.error('Failed to load announcements', err);
+      // Fallback announcements
+      setAnnouncements([
+        { id: 1, title: '🎉 Welcome to World Cup Mining War 2026!', content: 'Start mining Votes now and prepare for the biggest football event!', created_at: new Date().toISOString(), type: 'info' },
+        { id: 2, title: '⚽ Prediction System is LIVE!', content: 'You can now predict World Cup 2026 match outcomes and win from the Parimutuel pool!', created_at: new Date().toISOString(), type: 'feature' }
+      ]);
+    }
+  };
+
   const nationData = nations.find(n => n.code === favoriteNation) || NATIONS.find(n => n.code === favoriteNation);
   const initial = (firstName || username || 'P').charAt(0).toUpperCase();
   const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${referralCode || ''}`;
@@ -63,7 +164,6 @@ export default function ProfilePage() {
     telegram.shareUrl(inviteLink, text);
   };
 
-  // Live total taps calculation
   const liveTotalTaps = (totalTaps || 0) + (tapCount || 0);
 
   return (
@@ -82,12 +182,16 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="tabs mb-md">
-        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>My Stats</button>
+      <div className="tabs mb-md" style={{ flexWrap: 'wrap', gap: '4px' }}>
+        <button className={`tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>Stats</button>
         <button className={`tab ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>Friends</button>
         <button className={`tab ${activeTab === 'nfts' ? 'active' : ''}`} onClick={() => setActiveTab('nfts')}>NFTs</button>
+        <button className={`tab ${activeTab === 'guide' ? 'active' : ''}`} onClick={() => setActiveTab('guide')}>Guide</button>
+        <button className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => setActiveTab('log')}>Log</button>
+        <button className={`tab ${activeTab === 'roadmap' ? 'active' : ''}`} onClick={() => setActiveTab('roadmap')}>Roadmap</button>
       </div>
 
+      {/* ── Stats Tab ── */}
       {activeTab === 'stats' && (
         <>
           <div className="card mb-lg">
@@ -156,11 +260,10 @@ export default function ProfilePage() {
               <div className="profile-stat-label">Rewards</div>
             </div>
           </div>
-
-
         </>
       )}
 
+      {/* ── Friends Tab ── */}
       {activeTab === 'friends' && (
         <div className="card text-center">
           <div style={{ fontSize: '3rem', margin: '16px 0' }}>🤝</div>
@@ -212,6 +315,7 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* ── NFTs Tab ── */}
       {activeTab === 'nfts' && (
         <div className="flex-col gap-sm">
           <h3 className="section-title text-left">My NFT Collection</h3>
@@ -247,6 +351,99 @@ export default function ProfilePage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Guide Tab ── */}
+      {activeTab === 'guide' && (
+        <div className="flex-col gap-sm">
+          <div className="card mb-sm" style={{ background: 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,100,255,0.1))', border: '1px solid var(--neon-green)' }}>
+            <h3 style={{ textAlign: 'center', marginBottom: '8px' }}>📖 How to Predict Matches</h3>
+            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Follow these steps to start predicting World Cup 2026 matches and win Votes!
+            </p>
+          </div>
+
+          {GUIDE_STEPS.map(step => (
+            <div key={step.step} className="card" style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <div style={{ 
+                minWidth: '40px', height: '40px', borderRadius: '50%', 
+                background: 'linear-gradient(135deg, var(--neon-green), var(--neon-blue))', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                fontSize: '1.2rem', flexShrink: 0 
+              }}>
+                {step.icon}
+              </div>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '4px' }}>
+                  Step {step.step}: {step.title}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  {step.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Log (Announcements) Tab ── */}
+      {activeTab === 'log' && (
+        <div className="flex-col gap-sm">
+          <h3 className="section-title text-left">📢 Game Announcements</h3>
+          {announcements.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">📭</div>
+              <div className="empty-state-text">No announcements yet.</div>
+            </div>
+          ) : (
+            announcements.map((ann, i) => (
+              <div key={ann.id || i} className="card" style={{ borderLeft: `3px solid ${ann.type === 'feature' ? 'var(--neon-green)' : ann.type === 'warning' ? 'var(--gold)' : 'var(--neon-blue)'}` }}>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '6px' }}>{ann.title}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{ann.content}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '8px', textAlign: 'right' }}>
+                  {new Date(ann.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── Roadmap Tab ── */}
+      {activeTab === 'roadmap' && (
+        <div className="flex-col gap-sm">
+          <div className="card mb-sm" style={{ background: 'linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,100,0,0.1))', border: '1px solid var(--gold)', textAlign: 'center' }}>
+            <h3 style={{ marginBottom: '4px' }}>🗺️ Project Roadmap</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Our journey to build the ultimate World Cup experience</p>
+          </div>
+
+          {ROADMAP.map(phase => (
+            <div key={phase.phase} className="card" style={{ 
+              opacity: phase.status === 'locked' ? 0.6 : 1,
+              borderLeft: `3px solid ${phase.status === 'active' ? 'var(--neon-green)' : phase.status === 'upcoming' ? 'var(--gold)' : '#555'}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ fontSize: '1.5rem' }}>{phase.icon}</div>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>Phase {phase.phase}: {phase.title}</div>
+                  <div style={{ fontSize: '0.7rem' }}>
+                    {phase.status === 'active' && <span style={{ color: 'var(--neon-green)' }}>● ACTIVE NOW</span>}
+                    {phase.status === 'upcoming' && <span style={{ color: 'var(--gold)' }}>◐ COMING SOON</span>}
+                    {phase.status === 'locked' && <span style={{ color: '#888' }}>○ LOCKED</span>}
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: '1.4' }}>{phase.description}</p>
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                {phase.items.map((item, i) => (
+                  <li key={i} style={{ fontSize: '0.75rem', color: phase.status === 'active' ? 'var(--neon-green)' : 'var(--text-secondary)', marginBottom: '2px' }}>
+                    {phase.status === 'active' ? '✅' : phase.status === 'upcoming' ? '🔜' : '🔒'} {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -114,11 +114,11 @@ export default function PredictionPage() {
     setSelectedMatch(match);
     setSelectedTeam('A');
     setSelectedScore(null);
-    setStake(100);
+    setStake(1000);
   };
 
   const handlePredict = async () => {
-    if (stake < 100) return alert('Minimum stake is 100 votes.');
+    if (stake < 1000) return alert('Minimum stake is 1,000 votes.');
     
     const finalOutcome = selectedScore || selectedTeam;
     
