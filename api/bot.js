@@ -68,11 +68,6 @@ export default async function handler(req, res) {
     if (update.callback_query) {
       const cb = update.callback_query;
       const cbData = cb.data;
-      
-      // Debug log via telegram
-      if (adminChatId) {
-        await telegramAPI('sendMessage', { chat_id: adminChatId, text: `[DEBUG] Native Webhook triggered! Action: ${cbData}` });
-      }
 
       if (!db) {
         await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'DB not configured', show_alert: true });
@@ -129,7 +124,9 @@ export default async function handler(req, res) {
         // Refund
         const { data: refundUser } = await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
         if (refundUser) {
-          await db.from('users').update({ ton_balance: (refundUser.ton_balance || 0) + tx.amount_ton }).eq('telegram_id', tx.user_id);
+          const newBalance = Number(refundUser.ton_balance || 0) + Number(tx.amount_ton);
+          const { error: refundErr } = await db.from('users').update({ ton_balance: newBalance }).eq('telegram_id', tx.user_id);
+          if (refundErr) console.error('Refund error:', refundErr);
         }
 
         // Update DB
