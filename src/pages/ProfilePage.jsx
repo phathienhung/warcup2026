@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useUserStore from '../store/userStore';
 import api from '../lib/api';
 import useGameStore from '../store/gameStore';
@@ -10,6 +11,7 @@ import telegram from '../lib/telegram';
 export default function ProfilePage() {
   const { user, username, firstName, level, xp, xpToNextLevel, favoriteNation, totalTaps, referralCode, friendCount, telegramId } = useUserStore();
   const { tapCount } = useGameStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'friends' | 'nfts'
   const [myNfts, setMyNfts] = useState([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
@@ -157,6 +159,18 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          <div className="mb-lg">
+            <button 
+              className="btn btn-primary btn-lg btn-full"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              onClick={() => {
+                localStorage.setItem('show_prediction_tutorial', 'true');
+                navigate('/prediction');
+              }}
+            >
+              <span>🎓</span> HOW TO PLAY & BET
+            </button>
+          </div>
 
         </>
       )}

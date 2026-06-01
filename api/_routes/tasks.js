@@ -65,10 +65,14 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Already claimed today' });
         }
 
-        const { data: config } = await supabase.from('game_config').select('streak_reward_type, streak_reward_value').eq('id', 1).single();
+        // Get config for the current day (modulo 7 if streak > 7, or cap at 7)
+        let rewardDay = dbUser.login_streak || 1;
+        if (rewardDay > 7) rewardDay = ((rewardDay - 1) % 7) + 1;
         
-        const rewardType = config?.streak_reward_type || 'speed';
-        const rewardValue = config?.streak_reward_value || 1;
+        const { data: config } = await supabase.from('daily_rewards_config').select('reward_type, reward_value').eq('day', rewardDay).single();
+        
+        const rewardType = config?.reward_type || 'speed';
+        const rewardValue = config?.reward_value || 1;
         
         const updates = { last_streak_claim: today };
         
@@ -78,10 +82,17 @@ export default async function handler(req, res) {
           updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + rewardValue;
         } else if (rewardType === 'max_energy') {
           updates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
+        } else if (rewardType === 'votes') {
+          // If giving votes, we should update total_votes and available_votes instead of users table stats
+          // but we will update it below using an RPC if needed. 
+          // For now let's just add to users table if we decide to store a bonus, or run a direct increment.
+          const { data: currentVotes } = await supabase.from('users').select('total_votes, available_votes').eq('telegram_id', user.id).single();
+          updates.total_votes = (currentVotes?.total_votes || 0) + rewardValue;
+          updates.available_votes = (currentVotes?.available_votes || 0) + rewardValue;
         }
 
         await supabase.from('users').update(updates).eq('telegram_id', user.id);
-        return res.status(200).json({ success: true, rewardType, rewardValue });
+        return res.status(200).json({ success: true, rewardType, rewardValue, rewardDay });
       } catch (e) {
         console.error('Claim streak error:', e);
         return res.status(500).json({ error: 'Server error' });
