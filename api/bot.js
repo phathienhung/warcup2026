@@ -1,4 +1,4 @@
-import { Bot } from 'grammy';
+import { Bot, webhookCallback } from 'grammy';
 import { createClient } from '@supabase/supabase-js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -168,20 +168,19 @@ if (bot) {
       if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] FATAL CATCH BLOCK: ${e.message}`); } catch (err) {} }
       return ctx.answerCallbackQuery({ text: `Error: ${e.message?.slice(0, 50)}`, show_alert: true });
     }
-  });
-}
+
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     if (!bot) return res.status(500).send('Bot not configured');
     try {
-      console.log('[BOT] Incoming update:', JSON.stringify(req.body).slice(0, 200));
-      await bot.handleUpdate(req.body);
-      return res.status(200).send('OK');
+      console.log('[BOT] Incoming webhook request');
+      const cb = webhookCallback(bot, 'express');
+      return cb(req, res);
     } catch (err) {
-      console.error('[BOT] handleUpdate error:', err);
-      return res.status(200).send('OK'); // Always return 200 to Telegram
+      console.error('[BOT] Webhook error:', err);
+      return res.status(200).send('OK');
     }
   }
-  return res.status(200).send('Bot Webhook Endpoint');
+  return res.status(200).send('Bot Webhook Endpoint Active');
 }
