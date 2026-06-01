@@ -1,186 +1,154 @@
-import { Bot, webhookCallback } from 'grammy';
 import { createClient } from '@supabase/supabase-js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const db = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const adminChatId = process.env.ADMIN_CHAT_ID?.trim();
+const publicChannelId = process.env.PUBLIC_CHANNEL_ID?.trim();
 
-const bot = token ? new Bot(token) : null;
-
-if (bot) {
-  bot.command('start', async (ctx) => {
-    const startParam = ctx.match;
-    const appUrl = process.env.VITE_TELEGRAM_WEBAPP_URL || 'https://worldcup2026.vercel.app';
-    const finalUrl = startParam ? `${appUrl}?startapp=${startParam}` : appUrl;
-    
-    await ctx.reply(
-      `Welcome to World Cup Mining War 2026! ⚽🏆\n\nTap, mine votes, collect star NFTs, and predict the world cup matches to become the ultimate fan!`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: 'PLAY NOW 🎮', web_app: { url: finalUrl } }]
-          ]
-        }
-      }
-    );
-  });
-
-  bot.command('help', async (ctx) => {
-    await ctx.reply('This is the World Cup Mining War 2026 bot. Tap "Play Now" to launch the mini app!');
-  });
-  
-  bot.command('ping', async (ctx) => {
-    await ctx.reply('Pong! Webhook is working perfectly.');
-  });
-  
-  bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
-  bot.on('message:successful_payment', async (ctx) => {
-    await ctx.reply('Thank you for your purchase! The items have been added to your account.');
-  });
-  
-  // Handle Admin button clicks (Confirm / Reject withdraw)
-  bot.on('callback_query:data', async (ctx) => {
-    const cbData = ctx.callbackQuery.data;
-    const adminChatId = process.env.ADMIN_CHAT_ID?.trim();
-    
-    // DEBUG 1: Send message that we received the click
-    if (adminChatId) {
-      try { await bot.api.sendMessage(adminChatId, `[DEBUG] Webhook triggered! Action: ${cbData}`); } catch (e) {}
-    }
-
-    if (!db) {
-      if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] ERROR: DB is not configured (Missing Supabase env vars)`); } catch (e) {} }
-      return ctx.answerCallbackQuery({ text: 'DB not configured', show_alert: true });
-    }
-
-    try {
-      // ── APPROVE WITHDRAW ──
-      if (cbData.startsWith('withdraw_')) {
-        const txId = cbData.replace('withdraw_', '');
-        console.log('[BOT] Processing withdraw approval for tx:', txId);
-
-        // 1. Get transaction
-        const { data: tx, error: txErr } = await db
-          .from('wallet_transactions')
-          .select('*')
-          .eq('id', txId)
-          .single();
-
-        if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] Found Tx: ${tx ? tx.id : 'null'} | Error: ${txErr?.message || 'none'}`); } catch (e) {} }
-
-        if (txErr || !tx) {
-          return ctx.answerCallbackQuery({ text: 'Transaction not found', show_alert: true });
-        }
-        if (tx.status !== 'pending') {
-          return ctx.answerCallbackQuery({ text: 'Already processed', show_alert: true });
-        }
-
-        // 2. Mark as completed
-        const { error: updateErr } = await db
-          .from('wallet_transactions')
-          .update({ status: 'completed' })
-          .eq('id', txId);
-
-        if (updateErr) {
-          if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] DB update error: ${updateErr.message}`); } catch (e) {} }
-          return ctx.answerCallbackQuery({ text: 'DB update failed', show_alert: true });
-        }
-
-        if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] Tx marked as completed.`); } catch (e) {} }
-
-        // 3. Get username for public message
-        const { data: txUser } = await db
-          .from('users')
-          .select('username')
-          .eq('telegram_id', tx.user_id)
-          .single();
-
-        const displayName = txUser?.username ? `@${txUser.username}` : `User ${tx.user_id}`;
-
-        // 4. Post to public channel
-        const publicChannelId = process.env.PUBLIC_CHANNEL_ID;
-        if (publicChannelId) {
-          try {
-            await bot.api.sendMessage(
-              publicChannelId,
-              `💸 Congratulations to ${displayName} for successfully withdrawing *${tx.amount_ton} TON*!`,
-              { parse_mode: 'Markdown' }
-            );
-          } catch (chErr) {
-            console.error('[BOT] channel post error:', chErr.message);
-          }
-        }
-
-        // 5. Delete admin message
-        try { await ctx.deleteMessage(); } catch (e) { /* ignore */ }
-
-        return ctx.answerCallbackQuery({ text: '✅ Withdrawal Approved!', show_alert: true });
-      }
-
-      // ── REJECT WITHDRAW ──
-      if (cbData.startsWith('reject_')) {
-        const txId = cbData.replace('reject_', '');
-        console.log('[BOT] Processing reject for tx:', txId);
-
-        const { data: tx, error: txErr } = await db
-          .from('wallet_transactions')
-          .select('*')
-          .eq('id', txId)
-          .single();
-
-        if (txErr || !tx) {
-          return ctx.answerCallbackQuery({ text: 'Transaction not found', show_alert: true });
-        }
-        if (tx.status !== 'pending') {
-          return ctx.answerCallbackQuery({ text: 'Already processed', show_alert: true });
-        }
-
-        // Refund user balance
-        const { data: refundUser } = await db
-          .from('users')
-          .select('ton_balance')
-          .eq('telegram_id', tx.user_id)
-          .single();
-
-        if (refundUser) {
-          await db
-            .from('users')
-            .update({ ton_balance: (refundUser.ton_balance || 0) + tx.amount_ton })
-            .eq('telegram_id', tx.user_id);
-        }
-
-        // Mark as rejected
-        await db
-          .from('wallet_transactions')
-          .update({ status: 'rejected' })
-          .eq('id', txId);
-
-        // Delete admin message
-        try { await ctx.deleteMessage(); } catch (e) { /* ignore */ }
-
-        return ctx.answerCallbackQuery({ text: '❌ Rejected & Refunded!', show_alert: true });
-      }
-
-      return ctx.answerCallbackQuery({ text: 'Unknown action', show_alert: true });
-
-    } catch (e) {
-      if (adminChatId) { try { await bot.api.sendMessage(adminChatId, `[DEBUG] FATAL CATCH BLOCK: ${e.message}`); } catch (err) {} }
-      return ctx.answerCallbackQuery({ text: `Error: ${e.message?.slice(0, 50)}`, show_alert: true });
-    }
-
+async function telegramAPI(method, payload) {
+  if (!token) return;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error(`Telegram API error (${method}):`, err);
+  }
+}
 
 export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    if (!bot) return res.status(500).send('Bot not configured');
-    try {
-      console.log('[BOT] Incoming webhook request');
-      const cb = webhookCallback(bot, 'express');
-      return cb(req, res);
-    } catch (err) {
-      console.error('[BOT] Webhook error:', err);
+  if (req.method !== 'POST') return res.status(200).send('Bot Webhook Endpoint Active');
+
+  const update = req.body;
+  if (!update) return res.status(200).send('OK');
+
+  try {
+    // 1. Handle Commands (e.g. /ping, /start)
+    if (update.message && update.message.text) {
+      const text = update.message.text;
+      const chatId = update.message.chat.id;
+
+      if (text.startsWith('/ping')) {
+        await telegramAPI('sendMessage', {
+          chat_id: chatId,
+          text: 'Pong! Webhook is working perfectly via Native Fetch.'
+        });
+      }
+      else if (text.startsWith('/start')) {
+        const appUrl = process.env.VITE_TELEGRAM_WEBAPP_URL || 'https://worldcup2026.vercel.app';
+        const parts = text.split(' ');
+        const startParam = parts.length > 1 ? parts[1] : null;
+        const finalUrl = startParam ? `${appUrl}?startapp=${startParam}` : appUrl;
+        
+        await telegramAPI('sendMessage', {
+          chat_id: chatId,
+          text: `Welcome to World Cup Mining War 2026! ⚽🏆\n\nTap, mine votes, collect star NFTs, and predict the world cup matches to become the ultimate fan!`,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'PLAY NOW 🎮', web_app: { url: finalUrl } }]
+            ]
+          }
+        });
+      }
+      else if (text.startsWith('/help')) {
+        await telegramAPI('sendMessage', {
+          chat_id: chatId,
+          text: 'This is the World Cup Mining War 2026 bot. Tap "Play Now" to launch the mini app!'
+        });
+      }
       return res.status(200).send('OK');
     }
+
+    // 2. Handle Callback Queries (Buttons)
+    if (update.callback_query) {
+      const cb = update.callback_query;
+      const cbData = cb.data;
+      
+      // Debug log via telegram
+      if (adminChatId) {
+        await telegramAPI('sendMessage', { chat_id: adminChatId, text: `[DEBUG] Native Webhook triggered! Action: ${cbData}` });
+      }
+
+      if (!db) {
+        await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'DB not configured', show_alert: true });
+        return res.status(200).send('OK');
+      }
+
+      if (cbData.startsWith('withdraw_')) {
+        const txId = cbData.replace('withdraw_', '');
+        
+        const { data: tx, error: txErr } = await db.from('wallet_transactions').select('*').eq('id', txId).single();
+        if (txErr || !tx) {
+           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'Transaction not found', show_alert: true });
+           return res.status(200).send('OK');
+        }
+        if (tx.status !== 'pending') {
+           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'Already processed', show_alert: true });
+           return res.status(200).send('OK');
+        }
+
+        // Update DB
+        await db.from('wallet_transactions').update({ status: 'completed' }).eq('id', txId);
+
+        // Notify Public Channel
+        const { data: txUser } = await db.from('users').select('username').eq('telegram_id', tx.user_id).single();
+        const displayName = txUser?.username ? `@${txUser.username}` : `User ${tx.user_id}`;
+        
+        if (publicChannelId) {
+          await telegramAPI('sendMessage', {
+            chat_id: publicChannelId,
+            text: `💸 Congratulations to ${displayName} for successfully withdrawing *${tx.amount_ton} TON*!`,
+            parse_mode: 'Markdown'
+          });
+        }
+
+        // Answer callback & Delete message
+        await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '✅ Withdrawal Approved!', show_alert: true });
+        if (cb.message) {
+          await telegramAPI('deleteMessage', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
+        }
+      }
+      else if (cbData.startsWith('reject_')) {
+        const txId = cbData.replace('reject_', '');
+        
+        const { data: tx, error: txErr } = await db.from('wallet_transactions').select('*').eq('id', txId).single();
+        if (txErr || !tx) {
+           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'Transaction not found', show_alert: true });
+           return res.status(200).send('OK');
+        }
+        if (tx.status !== 'pending') {
+           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'Already processed', show_alert: true });
+           return res.status(200).send('OK');
+        }
+
+        // Refund
+        const { data: refundUser } = await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
+        if (refundUser) {
+          await db.from('users').update({ ton_balance: (refundUser.ton_balance || 0) + tx.amount_ton }).eq('telegram_id', tx.user_id);
+        }
+
+        // Update DB
+        await db.from('wallet_transactions').update({ status: 'rejected' }).eq('id', txId);
+
+        // Answer callback & Delete message
+        await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '❌ Rejected & Refunded!', show_alert: true });
+        if (cb.message) {
+          await telegramAPI('deleteMessage', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
+        }
+      }
+      else {
+        await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: 'Unknown action', show_alert: true });
+      }
+    }
+
+  } catch (err) {
+    console.error('Webhook processing error:', err);
   }
-  return res.status(200).send('Bot Webhook Endpoint Active');
+
+  return res.status(200).send('OK');
 }
