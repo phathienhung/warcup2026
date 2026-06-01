@@ -25,6 +25,8 @@ export const useUserStore = create((set, get) => ({
   loginStreak: 0,
   referralCode: '',
   founderBadge: false,
+  boostExpiresAt: null,
+  boostMultiplier: 1,
 
   // ── Stats ─────────────────────────────────────────
   totalTaps: 0,
@@ -65,6 +67,8 @@ export const useUserStore = create((set, get) => ({
         predictionsWon: data.user.predictions_won || 0,
         predictionsTotal: data.user.predictions_total || 0,
         totalTaps: data.user.total_taps || 0,
+        boostExpiresAt: data.user.boost_expires_at || null,
+        boostMultiplier: data.user.boost_multiplier || 1,
       });
       const currentLevel = data.user.level || 1;
       set({ xpToNextLevel: get().getXpForLevel(currentLevel + 1) });

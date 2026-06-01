@@ -1,0 +1,114 @@
+[
+  {
+    "id": "play_hormuz_oil_defend",
+    "desc": "Try our game",
+    "link": "https://t.me/montowerdefend_bot/app?startapp=ref_7028261447",
+    "name": "Play Hormuz Oil Defend",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_headshot_hunter",
+    "desc": "Try our game",
+    "link": "https://t.me/headshot_hunter_bot/app?startapp=ref_7028261447",
+    "name": "Play Headshot Hunter",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_ads_free",
+    "desc": "Try our game",
+    "link": "https://t.me/ads_free_ton_bot/app?startapp=7028261447",
+    "name": "Play Ads Free",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_gold_route",
+    "desc": "Try our game",
+    "link": "https://t.me/TheGoldRouteApp_bot/app?startapp=ii_7028261447_1_58",
+    "name": "Play The Gold Route",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_claw_quest",
+    "desc": "Try our game",
+    "link": "https://t.me/Claw_Quest_bot/game?startapp=g_1061_1571426_69e07b54d0fa8d13924502e6",
+    "name": "Play Claw Quest",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_openclaw",
+    "desc": "Try our game",
+    "link": "https://t.me/Openclaw_tonbot/app?startapp=ref_7028261447",
+    "name": "Play Openclaw",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_clawmania",
+    "desc": "Try our game",
+    "link": "https://t.me/Clawmania_airbot/app?startapp=DKADGQTX",
+    "name": "Play Clawmania",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_labrador",
+    "desc": "Try our game",
+    "link": "https://t.me/LabradorAdventuresBot/start?startapp=ref_U9LCSYEM0C",
+    "name": "Play Labrador Adventures",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_ygzfarm",
+    "desc": "Try our game",
+    "link": "https://t.me/ygzfarm_bot?start=JGQ5KG6M",
+    "name": "Play YGZ Farm",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_openswap",
+    "desc": "Try our game",
+    "link": "https://t.me/OpenSwapBot?start=7028261447",
+    "name": "Play Open Swap",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_nation2029",
+    "desc": "Try our game",
+    "link": "https://t.me/Nation29Bot/app?startapp=ref_qufo8w6w",
+    "name": "Play Nation2029",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_atf_airdrop",
+    "desc": "Try our game",
+    "link": "https://t.me/ATF_AIRDROP_bot?start=7028261447",
+    "name": "Play ATF AIRDROP",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_mine_swap",
+    "desc": "Try our game",
+    "link": "https://t.me/mine_swap_bot?startapp=8NEP6B16",
+    "name": "Play Mine Swap",
+    "reward": 50,
+    "telegram_chat_id": ""
+  },
+  {
+    "id": "play_tofarms",
+    "desc": "Try our game",
+    "link": "https://t.me/ToFarms_Bot/app?startapp=ii_7028261447",
+    "name": "Play To Farms",
+    "reward": 50,
+    "telegram_chat_id": ""
+  }
+]

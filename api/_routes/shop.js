@@ -67,8 +67,13 @@ export default async function handler(req, res) {
           updates.available_votes = (updates.available_votes !== undefined ? updates.available_votes : (dbUser.available_votes || 0)) + totalValue;
           updates.total_votes = (dbUser.total_votes || 0) + totalValue;
         } else if (item.type === 'boost') {
-          // Simplification for hackathon: just give permanent speed boost
-          updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + 1;
+          // Set timed boost based on item id
+          // id '5' = Double Mining (x2), id '6' = Triple Mining (x3)
+          updates.boost_multiplier = item.id === '6' ? 3 : 2;
+          
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour boost
+          updates.boost_expires_at = expiresAt.toISOString();
         }
         
         if (Object.keys(updates).length > 0) {

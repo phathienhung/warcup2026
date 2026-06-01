@@ -17,6 +17,29 @@ export default function TasksPage() {
   const [claimingStreak, setClaimingStreak] = useState(false);
   const [processingTask, setProcessingTask] = useState(null);
 
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aDone = a.status === 'claimed';
+    const bDone = b.status === 'claimed';
+    if (aDone === bDone) return 0;
+    return aDone ? 1 : -1;
+  });
+
+  const sortedAchievements = [...(achievements || [])].sort((a, b) => {
+    const aMet = isAchievementMet(a.id);
+    const bMet = isAchievementMet(b.id);
+    const aClaimed = claimedAchievements.includes(a.id);
+    const bClaimed = claimedAchievements.includes(b.id);
+    
+    const aReady = aMet && !aClaimed;
+    const bReady = bMet && !bClaimed;
+
+    if (aReady === bReady) {
+      if (aClaimed === bClaimed) return 0;
+      return aClaimed ? 1 : -1;
+    }
+    return aReady ? -1 : 1;
+  });
+
   // Check if an achievement is met based on user stats
   const isAchievementMet = useCallback((id) => {
     if (!user) return false;
@@ -229,7 +252,7 @@ export default function TasksPage() {
             <div className="text-center" style={{ color: 'var(--text-secondary)', padding: '24px' }}>No tasks available yet.</div>
           ) : (
             <div className="flex-col gap-sm">
-              {tasks.map(task => (
+              {sortedTasks.map(task => (
                 <div key={task.id} className={`task-card ${task.status === 'claimed' ? 'completed' : ''}`}>
                   <div className="task-icon">{task.icon || '📋'}</div>
                   <div className="task-info">
@@ -260,7 +283,7 @@ export default function TasksPage() {
 
       {activeTab === 'achievements' && (
         <div className="grid-2">
-          {(achievements || []).map((achievement, i) => {
+          {sortedAchievements.map((achievement, i) => {
             const isClaimed = claimedAchievements.includes(achievement.id);
             const isMet = isAchievementMet(achievement.id);
             

@@ -15,7 +15,13 @@ export function computeStats(dbUser, friendCount = 0, nftMultiplier = 1.0) {
   
   // 1. Speed
   const baseSpeed = 1 + friendCount + (level - 1) + Math.floor(streak / 7) + speedBonus;
-  const finalSpeed = Math.floor(baseSpeed * nftMultiplier);
+  let multiplier = nftMultiplier;
+  
+  if (dbUser.boost_expires_at && new Date(dbUser.boost_expires_at) > new Date()) {
+    multiplier *= (dbUser.boost_multiplier || 1);
+  }
+  
+  const finalSpeed = Math.floor(baseSpeed * multiplier);
 
   // 2. Regen
   const baseRegen = 1 + (dbUser.energy_regen_bonus || 0);

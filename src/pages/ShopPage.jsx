@@ -17,6 +17,34 @@ export default function ShopPage() {
   const [myNfts, setMyNfts] = useState([]);
   const [loadingNfts, setLoadingNfts] = useState(false);
   const [purchasedBoostIds, setPurchasedBoostIds] = useState([]);
+  const { boostExpiresAt } = useUserStore();
+  const [boostRemainingStr, setBoostRemainingStr] = useState('');
+  const [isBoostActive, setIsBoostActive] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    if (boostExpiresAt && new Date(boostExpiresAt) > new Date()) {
+      setIsBoostActive(true);
+      const updateTimer = () => {
+        const diff = new Date(boostExpiresAt) - new Date();
+        if (diff <= 0) {
+          setIsBoostActive(false);
+          setBoostRemainingStr('');
+          clearInterval(interval);
+        } else {
+          const m = Math.floor(diff / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          setBoostRemainingStr(`${m}:${s.toString().padStart(2, '0')}`);
+        }
+      };
+      updateTimer();
+      interval = setInterval(updateTimer, 1000);
+    } else {
+      setIsBoostActive(false);
+      setBoostRemainingStr('');
+    }
+    return () => clearInterval(interval);
+  }, [boostExpiresAt]);
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -155,18 +183,32 @@ export default function ShopPage() {
 
       {activeTab === 'boosts' && (
         <div className="shop-grid">
-          {shopItems.filter(item => !purchasedBoostIds.includes(item.id)).map((item) => (
-            <div key={item.id} className="shop-item" onClick={() => setSelectedItem(item)}>
-              <div className="shop-item-icon">
-                {item.image_url ? <img src={item.image_url} alt={item.name} style={{ width: '100%', borderRadius: '8px' }} /> : item.icon}
+          {shopItems.filter(item => !purchasedBoostIds.includes(item.id)).map((item) => {
+            const isBoost = item.type === 'boost';
+            const isDisabled = isBoost && isBoostActive;
+            
+            return (
+              <div 
+                key={item.id} 
+                className={`shop-item ${isDisabled ? 'disabled' : ''}`} 
+                onClick={() => !isDisabled && setSelectedItem(item)}
+                style={{ opacity: isDisabled ? 0.6 : 1 }}
+              >
+                <div className="shop-item-icon">
+                  {item.image_url ? <img src={item.image_url} alt={item.name} style={{ width: '100%', borderRadius: '8px' }} /> : item.icon}
+                </div>
+                <div className="shop-item-name">{item.name}</div>
+                <div className="shop-item-desc">{item.description}</div>
+                <div className="shop-item-price mt-sm">
+                  {isDisabled ? (
+                    <span style={{ color: 'var(--gold)' }}>⏳ {boostRemainingStr}</span>
+                  ) : (
+                    <>{item.price} {item.price_type === 'ton' ? 'TON' : 'Votes'}</>
+                  )}
+                </div>
               </div>
-              <div className="shop-item-name">{item.name}</div>
-              <div className="shop-item-desc">{item.description}</div>
-              <div className="shop-item-price mt-sm">
-                {item.price} {item.price_type === 'ton' ? 'TON' : 'Votes'}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

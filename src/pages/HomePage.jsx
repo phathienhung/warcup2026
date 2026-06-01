@@ -14,7 +14,9 @@ import api from '../lib/api';
 
 export default function HomePage() {
   const { totalVotes, availableVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, tap } = useGameStore();
+  const { boostExpiresAt, boostMultiplier } = useUserStore();
   const [particles, setParticles] = useState([]);
+  const [boostRemainingStr, setBoostRemainingStr] = useState('');
   
   // Modals state
   const [activeModal, setActiveModal] = useState(null); // 'rank', 'wallet', 'spin', 'claim'
@@ -36,6 +38,28 @@ export default function HomePage() {
     
     checkAnnouncementsAndRewards();
   };
+
+  useEffect(() => {
+    let interval;
+    if (boostExpiresAt && new Date(boostExpiresAt) > new Date()) {
+      const updateTimer = () => {
+        const diff = new Date(boostExpiresAt) - new Date();
+        if (diff <= 0) {
+          setBoostRemainingStr('');
+          clearInterval(interval);
+        } else {
+          const m = Math.floor(diff / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          setBoostRemainingStr(`${m}:${s.toString().padStart(2, '0')}`);
+        }
+      };
+      updateTimer();
+      interval = setInterval(updateTimer, 1000);
+    } else {
+      setBoostRemainingStr('');
+    }
+    return () => clearInterval(interval);
+  }, [boostExpiresAt]);
 
   const checkAnnouncementsAndRewards = async () => {
     // 2. Fetch announcements
@@ -148,8 +172,13 @@ export default function HomePage() {
         >🎡</button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
         <MiningSpeed speed={miningSpeed} base={miningSpeedBase} multiply={miningSpeedMultiply} />
+        {boostRemainingStr && (
+          <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--gold)', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--gold)' }}>
+            🔥 x{boostMultiplier} BOOST: {boostRemainingStr}
+          </div>
+        )}
       </div>
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px', zIndex: 5 }}>
