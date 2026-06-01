@@ -14,6 +14,10 @@ ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_min INT DEFAULT 10000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_max INT DEFAULT 50000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS max_multiplier FLOAT DEFAULT 15.0;
 
+-- Xóa các cột bị trùng lặp / dư thừa (vì đã có bảng streak_rewards riêng)
+ALTER TABLE game_config DROP COLUMN IF EXISTS streak_reward_type;
+ALTER TABLE game_config DROP COLUMN IF EXISTS streak_reward_value;
+
 INSERT INTO game_config (id, seed_min, seed_max, max_multiplier) 
 VALUES (1, 10000, 50000, 15.0) 
 ON CONFLICT (id) DO UPDATE 
