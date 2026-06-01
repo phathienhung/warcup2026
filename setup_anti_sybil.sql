@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS game_config (
 );
 
 -- Thêm các cột nếu chưa có (Phòng trường hợp bảng game_config đã tồn tại từ trước)
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_mode TEXT DEFAULT 'dynamic';
+ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_fixed INT DEFAULT 50000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_min INT DEFAULT 10000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS seed_max INT DEFAULT 50000;
 ALTER TABLE game_config ADD COLUMN IF NOT EXISTS max_multiplier FLOAT DEFAULT 15.0;
@@ -18,10 +20,12 @@ ALTER TABLE game_config ADD COLUMN IF NOT EXISTS max_multiplier FLOAT DEFAULT 15
 ALTER TABLE game_config DROP COLUMN IF EXISTS streak_reward_type;
 ALTER TABLE game_config DROP COLUMN IF EXISTS streak_reward_value;
 
-INSERT INTO game_config (id, seed_min, seed_max, max_multiplier) 
-VALUES (1, 10000, 50000, 15.0) 
+INSERT INTO game_config (id, seed_mode, seed_fixed, seed_min, seed_max, max_multiplier) 
+VALUES (1, 'dynamic', 50000, 10000, 50000, 15.0) 
 ON CONFLICT (id) DO UPDATE 
-SET seed_min = EXCLUDED.seed_min,
+SET seed_mode = EXCLUDED.seed_mode,
+    seed_fixed = EXCLUDED.seed_fixed,
+    seed_min = EXCLUDED.seed_min,
     seed_max = EXCLUDED.seed_max,
     max_multiplier = EXCLUDED.max_multiplier;
 
@@ -30,23 +34,37 @@ ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_a BIGINT DEFAULT 0;
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_b BIGINT DEFAULT 0;
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_draw BIGINT DEFAULT 0;
 
--- 3. HÀM TẠO SEED NGẪU NHIÊN CHO TẤT CẢ TRẬN ĐẤU CŨ VÀ MỚI
+-- 3. HÀM TẠO SEED CHO TẤT CẢ TRẬN ĐẤU CŨ VÀ MỚI (LƯU Ý: CHỈ ÁP DỤNG VỚI CÁC TRẬN CHƯA CÓ SEED)
 DO $$
 DECLARE
+  v_mode TEXT;
+  v_fixed INT;
   v_min INT;
   v_max INT;
 BEGIN
-  SELECT seed_min, seed_max INTO v_min, v_max FROM game_config WHERE id = 1;
-  IF v_min IS NULL THEN
-    v_min := 10000;
-    v_max := 50000;
-  END IF;
+  SELECT seed_mode, seed_fixed, seed_min, seed_max INTO v_mode, v_fixed, v_min, v_max FROM game_config WHERE id = 1;
+  
+  -- Fallback nếu bị null
+  IF v_mode IS NULL THEN v_mode := 'dynamic'; END IF;
+  IF v_fixed IS NULL THEN v_fixed := 50000; END IF;
+  IF v_min IS NULL THEN v_min := 10000; END IF;
+  IF v_max IS NULL THEN v_max := 50000; END IF;
 
-  UPDATE matches SET 
-    seed_a = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
-    seed_b = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
-    seed_draw = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT
-  WHERE seed_a = 0 OR seed_a IS NULL;
+  IF v_mode = 'fixed' THEN
+    -- Nếu chọn mode cố định, cập nhật đồng loạt bằng con số N
+    UPDATE matches SET 
+      seed_a = v_fixed,
+      seed_b = v_fixed,
+      seed_draw = v_fixed
+    WHERE seed_a = 0 OR seed_a IS NULL;
+  ELSE
+    -- Nếu chọn mode động, random trong khoảng min max
+    UPDATE matches SET 
+      seed_a = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
+      seed_b = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
+      seed_draw = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT
+    WHERE seed_a = 0 OR seed_a IS NULL;
+  END IF;
 END $$;
 
 -- 4. CẬP NHẬT HÀM TRẢ THƯỞNG (PARIMUTUEL) KÈM MAX MULTIPLIER & SEED
