@@ -1,4 +1,5 @@
 import { Bot } from 'grammy';
+import { supabase } from './_lib/supabase.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -38,9 +39,11 @@ if (bot) {
     const data = ctx.callbackQuery.data;
     if (!data) return ctx.answerCallbackQuery('Unknown action');
     
-    const adminChatId = process.env.ADMIN_CHAT_ID;
+    const adminChatId = process.env.ADMIN_CHAT_ID?.trim();
     const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
-    if (chatId !== adminChatId) {
+    const fromId = ctx.from?.id?.toString();
+    
+    if (chatId !== adminChatId && fromId !== adminChatId) {
        return ctx.answerCallbackQuery({ text: 'Unauthorized: Not in Admin Chat', show_alert: true });
     }
 
@@ -49,7 +52,6 @@ if (bot) {
         const txId = data.replace('withdraw_', '');
         
         // 1. Get Tx
-        const { supabase } = await import('./_lib/supabase.js');
         const { data: tx } = await supabase.from('wallet_transactions').select('*, users(username)').eq('id', txId).single();
         
         if (!tx || tx.status !== 'pending') {
@@ -74,7 +76,6 @@ if (bot) {
       if (data.startsWith('reject_')) {
         const txId = data.replace('reject_', '');
         
-        const { supabase } = await import('./_lib/supabase.js');
         const { data: tx } = await supabase.from('wallet_transactions').select('*').eq('id', txId).single();
         
         if (!tx || tx.status !== 'pending') {
