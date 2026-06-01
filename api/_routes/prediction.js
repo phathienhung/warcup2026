@@ -14,7 +14,26 @@ export default async function handler(req, res) {
     if (action === 'matches') {
       const { data, error } = await supabase.from('matches').select('*').order('match_date', { ascending: true });
       if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json(data);
+      
+      // Merge seed into pools so UI can calculate accurate odds
+      const formattedData = data.map(m => {
+        const out = m.outcome_pools || {};
+        const sa = Number(m.seed_a || 0);
+        const sb = Number(m.seed_b || 0);
+        const sd = Number(m.seed_draw || 0);
+        
+        out['A'] = Number(out['A'] || 0) + sa;
+        out['B'] = Number(out['B'] || 0) + sb;
+        out['DRAW'] = Number(out['DRAW'] || 0) + sd;
+        
+        return {
+          ...m,
+          outcome_pools: out,
+          total_pool: Number(m.total_pool || 0) + sa + sb + sd
+        };
+      });
+      
+      return res.status(200).json(formattedData);
     } else if (action === 'myPredictions') {
       const { data, error } = await supabase.from('predictions').select('*, matches(*)').eq('user_id', user.id);
       if (error) return res.status(500).json({ error: error.message });

@@ -1,0 +1,137 @@
+-- ==============================================================================
+-- CẬP NHẬT CƠ CHẾ CHỐNG CLONE (ANTI-SYBIL)
+-- 1. Bơm thanh khoản ngẫu nhiên (Fake Seed Volume)
+-- 2. Đặt trần tỉ lệ ăn (Max Multiplier Cap)
+-- ==============================================================================
+
+-- 1. BẢNG CẤU HÌNH HỆ THỐNG
+CREATE TABLE IF NOT EXISTS game_config (
+  id INT PRIMARY KEY,
+  seed_min INT DEFAULT 10000,
+  seed_max INT DEFAULT 50000,
+  max_multiplier FLOAT DEFAULT 15.0
+);
+
+INSERT INTO game_config (id, seed_min, seed_max, max_multiplier) 
+VALUES (1, 10000, 50000, 15.0) 
+ON CONFLICT DO NOTHING;
+
+-- 2. THÊM CỘT SEED VÀO BẢNG MATCHES
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_a BIGINT DEFAULT 0;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_b BIGINT DEFAULT 0;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS seed_draw BIGINT DEFAULT 0;
+
+-- 3. HÀM TẠO SEED NGẪU NHIÊN CHO TẤT CẢ TRẬN ĐẤU CŨ VÀ MỚI
+DO $$
+DECLARE
+  v_min INT;
+  v_max INT;
+BEGIN
+  SELECT seed_min, seed_max INTO v_min, v_max FROM game_config WHERE id = 1;
+  IF v_min IS NULL THEN
+    v_min := 10000;
+    v_max := 50000;
+  END IF;
+
+  UPDATE matches SET 
+    seed_a = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
+    seed_b = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT,
+    seed_draw = floor(random() * (v_max - v_min + 1) + v_min)::BIGINT
+  WHERE seed_a = 0 OR seed_a IS NULL;
+END $$;
+
+-- 4. CẬP NHẬT HÀM TRẢ THƯỞNG (PARIMUTUEL) KÈM MAX MULTIPLIER & SEED
+CREATE OR REPLACE FUNCTION resolve_match_parimutuel(
+  p_match_id UUID, 
+  p_winner VARCHAR,
+  p_score VARCHAR
+)
+RETURNS VOID AS $$
+DECLARE
+  v_match RECORD;
+  v_winner_pool BIGINT;
+  v_score_pool BIGINT;
+  v_pred RECORD;
+  v_payout BIGINT;
+  v_raw_payout BIGINT;
+  v_max_payout BIGINT;
+  v_commission FLOAT := 0.95; 
+  v_max_mult FLOAT;
+  v_target_pool BIGINT;
+BEGIN
+  SELECT * INTO v_match FROM matches WHERE id = p_match_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found'; END IF;
+  IF v_match.status = 'completed' THEN RAISE EXCEPTION 'Match already completed'; END IF;
+
+  -- Lấy max_multiplier từ config
+  SELECT max_multiplier INTO v_max_mult FROM game_config WHERE id = 1;
+  IF v_max_mult IS NULL THEN v_max_mult := 15.0; END IF;
+
+  -- Tính tổng pool của các cửa chính (bao gồm cả Seed ảo của Hệ thống)
+  v_winner_pool := COALESCE((v_match.outcome_pools->>'A')::BIGINT, 0) + COALESCE(v_match.seed_a, 0) +
+                   COALESCE((v_match.outcome_pools->>'B')::BIGINT, 0) + COALESCE(v_match.seed_b, 0) +
+                   COALESCE((v_match.outcome_pools->>'DRAW')::BIGINT, 0) + COALESCE(v_match.seed_draw, 0);
+  
+  -- Pool cho điểm số chính xác (Tạm thời không dùng seed cho tỉ số vì tỉ số có quá nhiều cửa)
+  v_score_pool := COALESCE(v_match.total_pool, 0) - (
+                    COALESCE((v_match.outcome_pools->>'A')::BIGINT, 0) + 
+                    COALESCE((v_match.outcome_pools->>'B')::BIGINT, 0) + 
+                    COALESCE((v_match.outcome_pools->>'DRAW')::BIGINT, 0)
+                  );
+
+  UPDATE matches 
+  SET status = 'completed', 
+      winner = p_winner, 
+      score_a = SPLIT_PART(p_score, '-', 1)::INT,
+      score_b = SPLIT_PART(p_score, '-', 2)::INT
+  WHERE id = p_match_id;
+
+  FOR v_pred IN SELECT * FROM predictions WHERE match_id = p_match_id LOOP
+    v_payout := 0;
+
+    IF v_pred.predicted_team IN ('A', 'B', 'DRAW') THEN
+      IF v_pred.predicted_team = p_winner THEN
+        -- Lấy tổng volume của cửa đó (Bao gồm User + Seed Hệ Thống)
+        v_target_pool := COALESCE((v_match.outcome_pools->>p_winner)::BIGINT, 0);
+        IF p_winner = 'A' THEN v_target_pool := v_target_pool + COALESCE(v_match.seed_a, 0); END IF;
+        IF p_winner = 'B' THEN v_target_pool := v_target_pool + COALESCE(v_match.seed_b, 0); END IF;
+        IF p_winner = 'DRAW' THEN v_target_pool := v_target_pool + COALESCE(v_match.seed_draw, 0); END IF;
+
+        -- Tính thưởng gốc
+        v_raw_payout := FLOOR((v_winner_pool * v_commission) * v_pred.votes_staked / NULLIF(v_target_pool, 0));
+        
+        -- Cắt ngọn (Max Cap)
+        v_max_payout := FLOOR(v_pred.votes_staked * v_max_mult);
+        IF v_raw_payout > v_max_payout THEN
+           v_payout := v_max_payout;
+        ELSE
+           v_payout := v_raw_payout;
+        END IF;
+
+      END IF;
+    ELSE
+      IF v_pred.predicted_team = p_score THEN
+        -- Tỉ số không dùng Seed nên tính bình thường, nhưng vẫn áp dụng Max Cap
+        v_raw_payout := FLOOR((v_score_pool * v_commission) * v_pred.votes_staked / NULLIF((v_match.outcome_pools->>p_score)::BIGINT, 0));
+        v_max_payout := FLOOR(v_pred.votes_staked * v_max_mult);
+        IF v_raw_payout > v_max_payout THEN
+           v_payout := v_max_payout;
+        ELSE
+           v_payout := v_raw_payout;
+        END IF;
+      END IF;
+    END IF;
+
+    IF v_payout > 0 THEN
+      UPDATE predictions SET is_correct = TRUE, reward = v_payout, is_claimed = FALSE WHERE id = v_pred.id;
+    ELSE
+      UPDATE predictions SET is_correct = FALSE, reward = 0, is_claimed = TRUE WHERE id = v_pred.id;
+    END IF;
+
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- HƯỚNG DẪN:
+-- 1. Chạy đoạn Script này trong SQL Editor của Supabase.
+-- 2. Bạn có thể tự chỉnh sửa (Range Seed) và (Max Multiplier) tại Table `game_config`.
