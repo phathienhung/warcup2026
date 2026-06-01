@@ -58,7 +58,7 @@ export default function WalletPage() {
 
     try {
       await tonConnectUI.sendTransaction(transaction);
-      await api.depositWallet(Number(depositAmount));
+      await api.depositWallet(Number(depositAmount), address);
       alert('Deposit transaction sent! It is pending confirmation.');
       setDepositAmount('');
       loadHistory();
@@ -80,7 +80,7 @@ export default function WalletPage() {
     }
 
     try {
-      const res = await api.withdrawWallet(Number(withdrawAmount));
+      const res = await api.withdrawWallet(Number(withdrawAmount), address);
       if (res.success) {
         useGameStore.setState({ tonBalance: res.newBalance });
         alert(`Withdrawal of ${withdrawAmount} TON to ${friendlyAddress?.slice(0,8)}...${friendlyAddress?.slice(-6)} submitted! Pending admin approval.`);

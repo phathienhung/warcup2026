@@ -1,5 +1,11 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
+import { Bot, InlineKeyboard } from 'grammy';
+
+const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const bot = botToken ? new Bot(botToken) : null;
+const adminChatId = process.env.ADMIN_CHAT_ID;
+const publicChannelId = process.env.PUBLIC_CHANNEL_ID;
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -26,13 +32,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action, amount } = req.body;
+    const { action, amount, address } = req.body;
 
     if (action === 'withdraw') {
       try {
         const { data: dbUser } = await supabase
           .from('users')
-          .select('ton_balance')
+          .select('ton_balance, username')
           .eq('telegram_id', user.id)
           .single();
 
@@ -46,14 +52,33 @@ export default async function handler(req, res) {
           .update({ ton_balance: dbUser.ton_balance - amount })
           .eq('telegram_id', user.id);
 
-        await supabase
+        const { data: tx, error: txError } = await supabase
           .from('wallet_transactions')
           .insert({
             user_id: user.id,
             tx_type: 'withdraw',
             amount_ton: amount,
+            wallet_address: address,
             status: 'pending'
-          });
+          })
+          .select()
+          .single();
+          
+        if (txError) throw txError;
+
+        // Send to Admin Chat
+        if (bot && adminChatId) {
+          const usernameStr = dbUser.username ? `@${dbUser.username}` : `ID: ${user.id}`;
+          const text = `📤 *YÊU CẦU RÚT TIỀN*\nNgười chơi: ${usernameStr}\nSố lượng: *${amount} TON*\nĐịa chỉ nhận: \`${address}\``;
+          
+          const nanoTon = Math.floor(amount * 1e9);
+          const keyboard = new InlineKeyboard()
+            .url('🔗 Mở Tonkeeper Chuyển Tiền', `ton://transfer/${address}?amount=${nanoTon}`).row()
+            .text('✅ Xác Nhận Đã Chuyển', `withdraw_${tx.id}`).row()
+            .text('❌ Từ chối & Hoàn tiền', `reject_${tx.id}`);
+            
+          await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown', reply_markup: keyboard });
+        }
 
         return res.status(200).json({ success: true, newBalance: dbUser.ton_balance - amount });
       } catch (err) {
@@ -64,16 +89,45 @@ export default async function handler(req, res) {
 
     if (action === 'deposit') {
       try {
-        // Normally, deposit would be handled via a webhook from TON blockchain.
-        // For simulation/MVP, we just record a pending deposit.
-        await supabase
+        // Automatic Deposit Approval MVP
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('ton_balance, username')
+          .eq('telegram_id', user.id)
+          .single();
+          
+        const newBalance = (dbUser?.ton_balance || 0) + amount;
+
+        // 1. Add balance
+        await supabase.from('users').update({ ton_balance: newBalance }).eq('telegram_id', user.id);
+
+        // 2. Insert completed tx
+        const { data: tx, error: txError } = await supabase
           .from('wallet_transactions')
           .insert({
             user_id: user.id,
             tx_type: 'deposit',
             amount_ton: amount,
-            status: 'pending'
-          });
+            wallet_address: address,
+            status: 'completed'
+          })
+          .select()
+          .single();
+
+        // 3. Notify Admin & Public
+        if (bot) {
+          const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
+          
+          if (adminChatId) {
+             const text = `📥 *BÁO CÁO NẠP TIỀN (AUTO)*\nNgười chơi: ${usernameStr}\nSố lượng: *${amount} TON*\nVí: \`${address}\``;
+             await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
+          }
+          
+          if (publicChannelId) {
+             const textPub = `🚀 Chúc mừng ${usernameStr} vừa nạp thành công *${amount} TON* để săn vé World Cup! 🏆`;
+             await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'Markdown' });
+          }
+        }
 
         return res.status(200).json({ success: true });
       } catch (err) {

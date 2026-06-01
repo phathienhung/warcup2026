@@ -32,6 +32,72 @@ if (bot) {
   bot.on('message:successful_payment', async (ctx) => {
     await ctx.reply('Thank you for your purchase! The items have been added to your account.');
   });
+  
+  // Handle Admin Approvals
+  bot.on('callback_query', async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    if (!data) return ctx.answerCallbackQuery('Unknown action');
+    
+    const adminChatId = process.env.ADMIN_CHAT_ID;
+    if (ctx.chat?.id.toString() !== adminChatId) {
+       return ctx.answerCallbackQuery('Unauthorized');
+    }
+
+    try {
+      if (data.startsWith('withdraw_')) {
+        const txId = data.replace('withdraw_', '');
+        
+        // 1. Get Tx
+        const { supabase } = await import('./_lib/supabase.js');
+        const { data: tx } = await supabase.from('wallet_transactions').select('*, users(username)').eq('id', txId).single();
+        
+        if (!tx || tx.status !== 'pending') {
+          return ctx.answerCallbackQuery('Tx not found or already processed');
+        }
+
+        // 2. Update status
+        await supabase.from('wallet_transactions').update({ status: 'completed' }).eq('id', txId);
+        
+        // 3. Notify Public Channel
+        const publicChannelId = process.env.PUBLIC_CHANNEL_ID;
+        if (publicChannelId) {
+           const usernameStr = tx.users?.username ? `@${tx.users.username}` : `ID: ${tx.user_id}`;
+           await bot.api.sendMessage(publicChannelId, `💸 Chúc mừng ${usernameStr} vừa rút thành công *${tx.amount_ton} TON*!`, { parse_mode: 'Markdown' });
+        }
+        
+        // 4. Delete admin message
+        await ctx.deleteMessage();
+        return ctx.answerCallbackQuery('Approved withdraw');
+      }
+
+      if (data.startsWith('reject_')) {
+        const txId = data.replace('reject_', '');
+        
+        const { supabase } = await import('./_lib/supabase.js');
+        const { data: tx } = await supabase.from('wallet_transactions').select('*').eq('id', txId).single();
+        
+        if (!tx || tx.status !== 'pending') {
+          return ctx.answerCallbackQuery('Tx not found or already processed');
+        }
+
+        // Refund user balance
+        const { data: user } = await supabase.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
+        if (user) {
+          await supabase.from('users').update({ ton_balance: (user.ton_balance || 0) + tx.amount_ton }).eq('telegram_id', tx.user_id);
+        }
+
+        // Update tx
+        await supabase.from('wallet_transactions').update({ status: 'rejected' }).eq('id', txId);
+        
+        // Delete message
+        await ctx.deleteMessage();
+        return ctx.answerCallbackQuery('Rejected and refunded');
+      }
+    } catch (e) {
+      console.error(e);
+      return ctx.answerCallbackQuery('Error processing action');
+    }
+  });
 }
 
 export default async function handler(req, res) {

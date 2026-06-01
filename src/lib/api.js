@@ -187,12 +187,12 @@ class ApiClient {
     return this.get('/wallet');
   }
 
-  withdrawWallet(amount) {
-    return this.post('/wallet', { action: 'withdraw', amount });
+  withdrawWallet(amount, address) {
+    return this.post('/wallet', { action: 'withdraw', amount, address });
   }
 
-  depositWallet(amount) {
-    return this.post('/wallet', { action: 'deposit', amount });
+  depositWallet(amount, address) {
+    return this.post('/wallet', { action: 'deposit', amount, address });
   }
 
   // ── Spin ──────────────────────────────────────────
