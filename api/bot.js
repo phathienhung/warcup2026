@@ -39,8 +39,9 @@ if (bot) {
     if (!data) return ctx.answerCallbackQuery('Unknown action');
     
     const adminChatId = process.env.ADMIN_CHAT_ID;
-    if (ctx.chat?.id.toString() !== adminChatId) {
-       return ctx.answerCallbackQuery('Unauthorized');
+    const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
+    if (chatId !== adminChatId) {
+       return ctx.answerCallbackQuery({ text: 'Unauthorized: Not in Admin Chat', show_alert: true });
     }
 
     try {
@@ -52,7 +53,7 @@ if (bot) {
         const { data: tx } = await supabase.from('wallet_transactions').select('*, users(username)').eq('id', txId).single();
         
         if (!tx || tx.status !== 'pending') {
-          return ctx.answerCallbackQuery('Tx not found or already processed');
+          return ctx.answerCallbackQuery({ text: 'Tx not found or already processed', show_alert: true });
         }
 
         // 2. Update status
@@ -62,12 +63,12 @@ if (bot) {
         const publicChannelId = process.env.PUBLIC_CHANNEL_ID;
         if (publicChannelId) {
            const usernameStr = tx.users?.username ? `@${tx.users.username}` : `ID: ${tx.user_id}`;
-           await bot.api.sendMessage(publicChannelId, `💸 Chúc mừng ${usernameStr} vừa rút thành công *${tx.amount_ton} TON*!`, { parse_mode: 'Markdown' });
+           await bot.api.sendMessage(publicChannelId, `💸 Congratulations to ${usernameStr} for successfully withdrawing *${tx.amount_ton} TON*!`, { parse_mode: 'Markdown' });
         }
         
         // 4. Delete admin message
         await ctx.deleteMessage();
-        return ctx.answerCallbackQuery('Approved withdraw');
+        return ctx.answerCallbackQuery({ text: 'Withdrawal Approved!', show_alert: true });
       }
 
       if (data.startsWith('reject_')) {
@@ -77,7 +78,7 @@ if (bot) {
         const { data: tx } = await supabase.from('wallet_transactions').select('*').eq('id', txId).single();
         
         if (!tx || tx.status !== 'pending') {
-          return ctx.answerCallbackQuery('Tx not found or already processed');
+          return ctx.answerCallbackQuery({ text: 'Tx not found or already processed', show_alert: true });
         }
 
         // Refund user balance
@@ -91,11 +92,11 @@ if (bot) {
         
         // Delete message
         await ctx.deleteMessage();
-        return ctx.answerCallbackQuery('Rejected and refunded');
+        return ctx.answerCallbackQuery({ text: 'Rejected and Refunded!', show_alert: true });
       }
     } catch (e) {
       console.error(e);
-      return ctx.answerCallbackQuery('Error processing action');
+      return ctx.answerCallbackQuery({ text: 'Error processing action', show_alert: true });
     }
   });
 }

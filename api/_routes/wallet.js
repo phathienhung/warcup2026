@@ -69,13 +69,13 @@ export default async function handler(req, res) {
         // Send to Admin Chat
         if (bot && adminChatId) {
           const usernameStr = dbUser.username ? `@${dbUser.username}` : `ID: ${user.id}`;
-          const text = `📤 *YÊU CẦU RÚT TIỀN*\nNgười chơi: ${usernameStr}\nSố lượng: *${amount} TON*\nĐịa chỉ nhận: \`${address}\``;
+          const text = `📤 *WITHDRAW REQUEST*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
           
           const nanoTon = Math.floor(amount * 1e9);
           const keyboard = new InlineKeyboard()
-            .url('🔗 Mở Tonkeeper Chuyển Tiền', `ton://transfer/${address}?amount=${nanoTon}`).row()
-            .text('✅ Xác Nhận Đã Chuyển', `withdraw_${tx.id}`).row()
-            .text('❌ Từ chối & Hoàn tiền', `reject_${tx.id}`);
+            .url('🔗 Open Tonkeeper to Pay', `ton://transfer/${address}?amount=${nanoTon}`).row()
+            .text('✅ Confirm Transfer', `withdraw_${tx.id}`).row()
+            .text('❌ Reject & Refund', `reject_${tx.id}`);
             
           await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown', reply_markup: keyboard });
         }
@@ -119,12 +119,12 @@ export default async function handler(req, res) {
           const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
           
           if (adminChatId) {
-             const text = `📥 *BÁO CÁO NẠP TIỀN (AUTO)*\nNgười chơi: ${usernameStr}\nSố lượng: *${amount} TON*\nVí: \`${address}\``;
+             const text = `📥 *NEW DEPOSIT (AUTO)*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
              await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
           }
           
           if (publicChannelId) {
-             const textPub = `🚀 Chúc mừng ${usernameStr} vừa nạp thành công *${amount} TON* để săn vé World Cup! 🏆`;
+             const textPub = `🚀 ${usernameStr} just successfully deposited *${amount} TON* to hunt for World Cup tickets! 🏆`;
              await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'Markdown' });
           }
         }
