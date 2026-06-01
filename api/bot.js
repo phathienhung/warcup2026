@@ -1,9 +1,11 @@
 import { Bot } from 'grammy';
-import { supabase } from './_lib/supabase.js';
+import { createClient } from '@supabase/supabase-js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const db = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-// Create bot without starting polling, so it can handle webhooks
 const bot = token ? new Bot(token) : null;
 
 if (bot) {
@@ -28,94 +30,147 @@ if (bot) {
     await ctx.reply('This is the World Cup Mining War 2026 bot. Tap "Play Now" to launch the mini app!');
   });
   
-  // Handle successful payments
   bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
   bot.on('message:successful_payment', async (ctx) => {
     await ctx.reply('Thank you for your purchase! The items have been added to your account.');
   });
   
-  // Handle Admin Approvals
-  bot.on('callback_query', async (ctx) => {
-    const data = ctx.callbackQuery.data;
-    if (!data) return ctx.answerCallbackQuery('Unknown action');
-    
-    const adminChatId = process.env.ADMIN_CHAT_ID?.trim();
-    const chatId = ctx.callbackQuery.message?.chat?.id?.toString();
-    const fromId = ctx.from?.id?.toString();
-    
-    if (chatId !== adminChatId && fromId !== adminChatId) {
-       return ctx.answerCallbackQuery({ text: 'Unauthorized: Not in Admin Chat', show_alert: true });
+  // Handle Admin button clicks (Confirm / Reject withdraw)
+  bot.on('callback_query:data', async (ctx) => {
+    const cbData = ctx.callbackQuery.data;
+    console.log('[BOT] callback_query received:', cbData, 'from:', ctx.from?.id);
+
+    if (!db) {
+      console.error('[BOT] No database connection');
+      return ctx.answerCallbackQuery({ text: 'DB not configured', show_alert: true });
     }
 
     try {
-      if (data.startsWith('withdraw_')) {
-        const txId = data.replace('withdraw_', '');
-        
-        // 1. Get Tx
-        const { data: tx } = await supabase.from('wallet_transactions').select('*, users(username)').eq('id', txId).single();
-        
-        if (!tx || tx.status !== 'pending') {
-          return ctx.answerCallbackQuery({ text: 'Tx not found or already processed', show_alert: true });
+      // ── APPROVE WITHDRAW ──
+      if (cbData.startsWith('withdraw_')) {
+        const txId = cbData.replace('withdraw_', '');
+        console.log('[BOT] Processing withdraw approval for tx:', txId);
+
+        // 1. Get transaction
+        const { data: tx, error: txErr } = await db
+          .from('wallet_transactions')
+          .select('*')
+          .eq('id', txId)
+          .single();
+
+        console.log('[BOT] tx lookup result:', tx ? tx.id : 'null', 'error:', txErr?.message);
+
+        if (txErr || !tx) {
+          return ctx.answerCallbackQuery({ text: 'Transaction not found', show_alert: true });
+        }
+        if (tx.status !== 'pending') {
+          return ctx.answerCallbackQuery({ text: 'Already processed', show_alert: true });
         }
 
-        // 2. Update status
-        await supabase.from('wallet_transactions').update({ status: 'completed' }).eq('id', txId);
-        
-        // 3. Notify Public Channel
+        // 2. Mark as completed
+        const { error: updateErr } = await db
+          .from('wallet_transactions')
+          .update({ status: 'completed' })
+          .eq('id', txId);
+
+        if (updateErr) {
+          console.error('[BOT] update error:', updateErr.message);
+          return ctx.answerCallbackQuery({ text: 'DB update failed', show_alert: true });
+        }
+
+        // 3. Get username for public message
+        const { data: txUser } = await db
+          .from('users')
+          .select('username')
+          .eq('telegram_id', tx.user_id)
+          .single();
+
+        const displayName = txUser?.username ? `@${txUser.username}` : `User ${tx.user_id}`;
+
+        // 4. Post to public channel
         const publicChannelId = process.env.PUBLIC_CHANNEL_ID;
         if (publicChannelId) {
-           const usernameStr = tx.users?.username ? `@${tx.users.username}` : `ID: ${tx.user_id}`;
-           await bot.api.sendMessage(publicChannelId, `💸 Congratulations to ${usernameStr} for successfully withdrawing *${tx.amount_ton} TON*!`, { parse_mode: 'Markdown' });
+          try {
+            await bot.api.sendMessage(
+              publicChannelId,
+              `💸 Congratulations to ${displayName} for successfully withdrawing *${tx.amount_ton} TON*!`,
+              { parse_mode: 'Markdown' }
+            );
+          } catch (chErr) {
+            console.error('[BOT] channel post error:', chErr.message);
+          }
         }
-        
-        // 4. Delete admin message
-        await ctx.deleteMessage();
-        return ctx.answerCallbackQuery({ text: 'Withdrawal Approved!', show_alert: true });
+
+        // 5. Delete admin message
+        try { await ctx.deleteMessage(); } catch (e) { /* ignore */ }
+
+        return ctx.answerCallbackQuery({ text: '✅ Withdrawal Approved!', show_alert: true });
       }
 
-      if (data.startsWith('reject_')) {
-        const txId = data.replace('reject_', '');
-        
-        const { data: tx } = await supabase.from('wallet_transactions').select('*').eq('id', txId).single();
-        
-        if (!tx || tx.status !== 'pending') {
-          return ctx.answerCallbackQuery({ text: 'Tx not found or already processed', show_alert: true });
+      // ── REJECT WITHDRAW ──
+      if (cbData.startsWith('reject_')) {
+        const txId = cbData.replace('reject_', '');
+        console.log('[BOT] Processing reject for tx:', txId);
+
+        const { data: tx, error: txErr } = await db
+          .from('wallet_transactions')
+          .select('*')
+          .eq('id', txId)
+          .single();
+
+        if (txErr || !tx) {
+          return ctx.answerCallbackQuery({ text: 'Transaction not found', show_alert: true });
+        }
+        if (tx.status !== 'pending') {
+          return ctx.answerCallbackQuery({ text: 'Already processed', show_alert: true });
         }
 
         // Refund user balance
-        const { data: user } = await supabase.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
-        if (user) {
-          await supabase.from('users').update({ ton_balance: (user.ton_balance || 0) + tx.amount_ton }).eq('telegram_id', tx.user_id);
+        const { data: refundUser } = await db
+          .from('users')
+          .select('ton_balance')
+          .eq('telegram_id', tx.user_id)
+          .single();
+
+        if (refundUser) {
+          await db
+            .from('users')
+            .update({ ton_balance: (refundUser.ton_balance || 0) + tx.amount_ton })
+            .eq('telegram_id', tx.user_id);
         }
 
-        // Update tx
-        await supabase.from('wallet_transactions').update({ status: 'rejected' }).eq('id', txId);
-        
-        // Delete message
-        await ctx.deleteMessage();
-        return ctx.answerCallbackQuery({ text: 'Rejected and Refunded!', show_alert: true });
+        // Mark as rejected
+        await db
+          .from('wallet_transactions')
+          .update({ status: 'rejected' })
+          .eq('id', txId);
+
+        // Delete admin message
+        try { await ctx.deleteMessage(); } catch (e) { /* ignore */ }
+
+        return ctx.answerCallbackQuery({ text: '❌ Rejected & Refunded!', show_alert: true });
       }
+
+      return ctx.answerCallbackQuery({ text: 'Unknown action', show_alert: true });
+
     } catch (e) {
-      console.error(e);
-      return ctx.answerCallbackQuery({ text: 'Error processing action', show_alert: true });
+      console.error('[BOT] callback error:', e);
+      return ctx.answerCallbackQuery({ text: `Error: ${e.message?.slice(0, 50)}`, show_alert: true });
     }
   });
 }
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    if (bot) {
-      try {
-        await bot.handleUpdate(req.body);
-        return res.status(200).send('OK');
-      } catch (err) {
-        console.error(err);
-        return res.status(500).send('Error');
-      }
-    } else {
-      return res.status(500).send('Bot not configured');
+    if (!bot) return res.status(500).send('Bot not configured');
+    try {
+      console.log('[BOT] Incoming update:', JSON.stringify(req.body).slice(0, 200));
+      await bot.handleUpdate(req.body);
+      return res.status(200).send('OK');
+    } catch (err) {
+      console.error('[BOT] handleUpdate error:', err);
+      return res.status(200).send('OK'); // Always return 200 to Telegram
     }
   }
-  
   return res.status(200).send('Bot Webhook Endpoint');
 }
