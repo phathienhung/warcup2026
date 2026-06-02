@@ -13,7 +13,7 @@ import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
-  const { totalVotes, availableVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, tap } = useGameStore();
+  const { totalVotes, availableVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, nationMultiplier, tap } = useGameStore();
   const { boostExpiresAt, boostMultiplier } = useUserStore();
   const [particles, setParticles] = useState([]);
   const [boostRemainingStr, setBoostRemainingStr] = useState('');
@@ -173,7 +173,7 @@ export default function HomePage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
-        <MiningSpeed speed={miningSpeed} base={miningSpeedBase} multiply={miningSpeedMultiply} />
+        <MiningSpeed speed={miningSpeed} base={miningSpeedBase} multiply={miningSpeedMultiply} nationMultiplier={nationMultiplier} />
         {boostRemainingStr && (
           <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--gold)', fontWeight: 'bold', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--gold)' }}>
             🔥 x{boostMultiplier} BOOST: {boostRemainingStr}

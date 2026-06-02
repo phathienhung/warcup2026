@@ -54,8 +54,14 @@ export default async function handler(req, res) {
           }
         });
       }
+      
+      let nationMultiplier = 1.0;
+      if (dbUser.favorite_nation) {
+        const { data: nStats } = await supabase.from('vw_nation_multipliers').select('final_multiplier').eq('code', dbUser.favorite_nation).single();
+        if (nStats) nationMultiplier = Number(nStats.final_multiplier);
+      }
 
-      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
       const speed = stats.speed.final;
       
       // Calculate background energy regen since last interaction

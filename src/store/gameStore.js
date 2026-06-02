@@ -9,6 +9,7 @@ export const useGameStore = create((set, get) => ({
   miningSpeed: 1,
   miningSpeedBase: 1,
   miningSpeedMultiply: 0,
+  nationMultiplier: 1.0,
   energy: 1000,
   maxEnergy: 1000,
   maxEnergyBase: 1000,
@@ -163,6 +164,7 @@ export const useGameStore = create((set, get) => ({
       energyRegenBase: data.energy_regen_base ?? 1,
       energyRegenMultiply: data.energy_regen_multiply ?? 0,
       rewardMultiplier: data.reward_multiplier ?? 1.0,
+      nationMultiplier: data.nation_multiplier ?? 1.0,
       nftMultiplier: data.nft_count ? (data.reward_multiplier || 1.0) : 1.0,
     });
   },

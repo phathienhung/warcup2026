@@ -78,8 +78,14 @@ export default async function handler(req, res) {
           }
         });
       }
+      
+      let nationMultiplier = 1.0;
+      if (dbUser.favorite_nation) {
+        const { data: nStats } = await supabase.from('vw_nation_multipliers').select('final_multiplier').eq('code', dbUser.favorite_nation).single();
+        if (nStats) nationMultiplier = Number(nStats.final_multiplier);
+      }
 
-      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier);
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
 
       // Offline energy regen
       const regenRateMs = 1000;
@@ -108,6 +114,7 @@ export default async function handler(req, res) {
       dbUser._stats = stats;
       dbUser._friendCount = friendCount;
       dbUser._nftMultiplier = nftMultiplier;
+      dbUser._nationMultiplier = nationMultiplier;
     }
 
     // Process referral if exists and user has no referrer yet
@@ -132,7 +139,8 @@ export default async function handler(req, res) {
     // Calculate mining speed (use cached stats if available)
     const friendCount = dbUser._friendCount || 0;
     const nftMultiplier = dbUser._nftMultiplier || 1.0;
-    const stats = dbUser._stats || computeStats(dbUser, friendCount, nftMultiplier);
+    const nationMultiplier = dbUser._nationMultiplier || 1.0;
+    const stats = dbUser._stats || computeStats(dbUser, friendCount, nftMultiplier, nationMultiplier);
 
     return res.status(200).json({ 
       user: {
@@ -147,6 +155,7 @@ export default async function handler(req, res) {
         max_energy_base: stats.maxEnergy.base,
         max_energy_multiply: stats.maxEnergy.multiply,
         reward_multiplier: stats.rewardMultiplier,
+        nation_multiplier: stats.nationMultiplier,
         friend_count: friendCount || 0,
         nft_count: dbUser.nft_count || 0
       } 

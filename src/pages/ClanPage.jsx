@@ -43,9 +43,16 @@ export default function ClanPage() {
               key={nation.code} 
               className="nation-item"
               onClick={() => handleSelectNation(nation.code)}
+              style={{ position: 'relative' }}
             >
-              <div className="nation-flag">{nation.flag}</div>
-              <div style={{ fontWeight: 'bold' }}>{nation.code}</div>
+              <div style={{ position: 'absolute', top: 4, right: 4, fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: 4 }}>
+                Tier {nation.tier || '?'}
+              </div>
+              <div className="nation-flag" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{nation.flag}</div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{nation.name || nation.code}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--neon-green)' }}>
+                {nation.final_multiplier ? `x${nation.final_multiplier} Boost` : 'x1.00 Boost'}
+              </div>
             </div>
           ))}
         </div>
