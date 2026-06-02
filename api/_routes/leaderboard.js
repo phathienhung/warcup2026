@@ -59,8 +59,10 @@ export default async function handler(req, res) {
         };
       });
       
-      computed.sort((a, b) => b.nft_multiplier - a.nft_multiplier);
-      const rankedData = computed.slice(0, limit).map((item, index) => ({
+      const nftUsers = computed.filter(u => u.nft_multiplier > 1.0);
+      nftUsers.sort((a, b) => b.nft_multiplier - a.nft_multiplier);
+      
+      const rankedData = nftUsers.slice(0, limit).map((item, index) => ({
         ...item,
         rank: index + 1
       }));

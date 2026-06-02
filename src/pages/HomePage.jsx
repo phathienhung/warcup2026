@@ -192,7 +192,7 @@ export default function HomePage() {
 
       <ParticleEngine particles={particles} setParticles={setParticles} />
 
-      <Modal isOpen={activeModal === 'rank'} onClose={() => setActiveModal(null)} title="Leaderboard">
+      <Modal isOpen={activeModal === 'rank'} onClose={() => setActiveModal(null)} title="TOP MULTIPLIER">
         <RankModalContent />
       </Modal>
 
@@ -274,19 +274,23 @@ function RankModalContent() {
 
   return (
     <div className="flex-col mt-md">
+      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.85rem' }}>
+        Top users with the highest multiplier by owning NFTs.
+      </div>
       <div style={{ textAlign: 'center', color: 'var(--gold)', marginBottom: '16px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-        🎁 Trao thưởng khi World Cup 2026 kết thúc!
+        🎁 Rewards will be distributed when World Cup 2026 ends!
       </div>
       <div className="leaderboard-list">
-        {leaders.map((u, i) => {
-          const rank = u.rank || i + 1;
-          const reward = TON_REWARDS[rank - 1] || 0;
+        {Array.from({ length: 10 }).map((_, i) => {
+          const rank = i + 1;
+          const u = leaders[i];
+          const reward = TON_REWARDS[i] || 0;
           return (
-            <div key={u.telegram_id} className="leaderboard-item">
+            <div key={u ? u.telegram_id : `empty-${rank}`} className="leaderboard-item">
               <div className="leaderboard-rank" style={{ color: rank <= 3 ? 'var(--gold)' : 'inherit' }}>{rank}</div>
-              <div className="leaderboard-info" style={{ flex: 1 }}>
-                <div className="leaderboard-name">{u.username || 'Player'}</div>
-                <div className="leaderboard-score">Hệ số: x{u.nft_multiplier?.toFixed(2) || '1.00'}</div>
+              <div className="leaderboard-info" style={{ flex: 1, opacity: u ? 1 : 0.4 }}>
+                <div className="leaderboard-name">{u ? (u.username || 'Player') : '---'}</div>
+                {u && <div className="leaderboard-score">Multiplier: x{u.nft_multiplier?.toFixed(2) || '1.00'}</div>}
               </div>
               {reward > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255,215,0,0.15)', padding: '4px 8px', borderRadius: '12px', border: '1px solid var(--gold)' }}>
