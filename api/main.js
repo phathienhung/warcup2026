@@ -22,10 +22,7 @@ export default async function handler(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
-  // Parse route from URL (e.g. /api/leaderboard?type=multiplier -> leaderboard)
-  // In Vercel, req.url might be /api/leaderboard?type=multiplier or /leaderboard?type=multiplier
-  const urlPath = req.url.split('?')[0];
-  const route = urlPath.replace(/^\/api\//, '').replace(/^\//, '') || req.query.route;
+  const route = req.query.route;
   
   switch(route) {
     case 'auth': return authHandler(req, res);

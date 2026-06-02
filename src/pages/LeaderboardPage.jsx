@@ -4,7 +4,7 @@ import api from '../lib/api';
 import { formatNumber } from '../data/constants';
 
 export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState('global');
+  const [activeTab, setActiveTab] = useState('multiplier');
   const [data, setData] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
