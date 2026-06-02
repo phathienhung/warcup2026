@@ -27,16 +27,7 @@ class ApiClient {
       options.body = JSON.stringify(body);
     }
 
-    let finalPath = path;
-    if (!path.startsWith('http')) {
-      // Convert /route?param=1 to /main?route=route&param=1 to bypass Vercel rewrite query string dropping
-      const [routePart, queryPart] = path.replace(/^\//, '').split('?');
-      if (routePart && routePart !== 'main') {
-        finalPath = `/main?route=${routePart}${queryPart ? '&' + queryPart : ''}`;
-      }
-    }
-
-    const url = finalPath.startsWith('http') ? finalPath : `${this.baseUrl}${finalPath}`;
+    const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
     const response = await fetch(url, options);
     const data = await response.json();
 
@@ -107,6 +98,9 @@ class ApiClient {
 
   // ── Leaderboard ───────────────────────────────────
   getLeaderboard(type = 'global', limit = 100) {
+    if (type === 'multiplier') {
+      return this.get(`/leaderboard-multiplier?limit=${limit}`);
+    }
     return this.get(`/leaderboard?type=${type}&limit=${limit}`);
   }
 

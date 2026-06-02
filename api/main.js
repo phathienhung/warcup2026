@@ -30,6 +30,9 @@ export default async function handler(req, res) {
     case 'tap': return tapHandler(req, res);
     case 'tasks': return tasksHandler(req, res);
     case 'leaderboard': return leaderboardHandler(req, res);
+    case 'leaderboard-multiplier':
+      req.query.type = 'multiplier';
+      return leaderboardHandler(req, res);
     case 'prediction': return predictionHandler(req, res);
     case 'shop': return shopHandler(req, res);
     case 'nft': return nftHandler(req, res);
