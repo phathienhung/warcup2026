@@ -267,20 +267,37 @@ function RankModalContent() {
   const [leaders, setLeaders] = useState([]);
   
   useEffect(() => {
-    api.getLeaderboard('global', 10).then(setLeaders).catch(console.error);
+    api.getLeaderboard('nft', 10).then(setLeaders).catch(console.error);
   }, []);
 
+  const TON_REWARDS = [10, 5, 3, 2, 1, 0.5, 0.4, 0.3, 0.2, 0.1];
+
   return (
-    <div className="leaderboard-list mt-md">
-      {leaders.map((u, i) => (
-        <div key={u.telegram_id} className="leaderboard-item">
-          <div className="leaderboard-rank">{u.rank || i + 1}</div>
-          <div className="leaderboard-info">
-            <div className="leaderboard-name">{u.username || 'Player'}</div>
-            <div className="leaderboard-score">{formatNumberFull(u.total_votes)} votes</div>
-          </div>
-        </div>
-      ))}
+    <div className="flex-col mt-md">
+      <div style={{ textAlign: 'center', color: 'var(--gold)', marginBottom: '16px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+        🎁 Trao thưởng khi World Cup 2026 kết thúc!
+      </div>
+      <div className="leaderboard-list">
+        {leaders.map((u, i) => {
+          const rank = u.rank || i + 1;
+          const reward = TON_REWARDS[rank - 1] || 0;
+          return (
+            <div key={u.telegram_id} className="leaderboard-item">
+              <div className="leaderboard-rank" style={{ color: rank <= 3 ? 'var(--gold)' : 'inherit' }}>{rank}</div>
+              <div className="leaderboard-info" style={{ flex: 1 }}>
+                <div className="leaderboard-name">{u.username || 'Player'}</div>
+                <div className="leaderboard-score">Hệ số: x{u.nft_multiplier?.toFixed(2) || '1.00'}</div>
+              </div>
+              {reward > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255,215,0,0.15)', padding: '4px 8px', borderRadius: '12px', border: '1px solid var(--gold)' }}>
+                  <span style={{ color: 'var(--gold)', fontWeight: 'bold', fontSize: '0.85rem' }}>+{reward}</span>
+                  <span style={{ fontSize: '0.9rem' }}>💎</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -12,72 +12,6 @@ export default async function handler(req, res) {
     const type = req.query.type || 'global';
     const limit = parseInt(req.query.limit || '100', 10);
     
-    if (type === 'multiplier') {
-      try {
-        // Query user_nfts joined with nft_templates, grouped by user
-        const { data: nftData, error: nftError } = await supabase
-          .from('user_nfts')
-          .select('user_id, nft_template_id, nft_templates(vote_multiplier)');
-        
-        if (nftError) {
-          console.error('NFT query error:', nftError);
-          return res.status(500).json({ error: nftError.message });
-        }
-
-        // Aggregate multipliers per user
-        const userMultipliers = {};
-        for (const nft of (nftData || [])) {
-          const uid = nft.user_id;
-          if (!userMultipliers[uid]) {
-            userMultipliers[uid] = { total: 1.0, count: 0 };
-          }
-          const vm = nft.nft_templates?.vote_multiplier || 1;
-          userMultipliers[uid].total += (vm - 1.0);
-          userMultipliers[uid].count += 1;
-        }
-
-        // Get user info for those users
-        const userIds = Object.keys(userMultipliers).map(Number);
-        if (userIds.length === 0) {
-          return res.status(200).json([]);
-        }
-
-        const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('telegram_id, username, favorite_nation, avatar_url')
-          .in('telegram_id', userIds);
-
-        if (usersError) {
-          console.error('Users query error:', usersError);
-          return res.status(500).json({ error: usersError.message });
-        }
-
-        // Merge and sort
-        const merged = (usersData || []).map(u => ({
-          telegram_id: u.telegram_id,
-          username: u.username,
-          favorite_nation: u.favorite_nation,
-          avatar_url: u.avatar_url,
-          nft_multiplier: userMultipliers[u.telegram_id]?.total || 1.0,
-          nft_count: userMultipliers[u.telegram_id]?.count || 0,
-        }));
-
-        merged.sort((a, b) => b.nft_multiplier - a.nft_multiplier);
-        const limited = merged.slice(0, limit);
-
-        const rankedData = limited.map((item, index) => ({
-          ...item,
-          total_votes: Number(item.nft_multiplier).toFixed(2) + 'x',
-          rank: index + 1
-        }));
-
-        return res.status(200).json(rankedData);
-      } catch (e) {
-        console.error('Multiplier leaderboard error:', e);
-        return res.status(500).json({ error: 'Failed to load multiplier leaderboard', detail: e.message });
-      }
-    }
-    
     let query = supabase
       .from('users')
       .select('telegram_id, username, favorite_nation, total_votes')
@@ -96,6 +30,41 @@ export default async function handler(req, res) {
       const friendIds = (refs || []).map(r => r.referred_id);
       friendIds.push(user.id); // include self
       query = query.in('telegram_id', friendIds);
+    }
+
+    if (type === 'nft') {
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('telegram_id, username, favorite_nation, user_nfts(nft_templates(vote_multiplier))');
+        
+      if (usersError) return res.status(500).json({ error: usersError.message });
+      
+      const computed = usersData.map(u => {
+        let nftMultiplier = 1.0;
+        if (u.user_nfts && Array.isArray(u.user_nfts)) {
+          u.user_nfts.forEach(n => {
+            let template = n.nft_templates;
+            if (Array.isArray(template)) template = template[0];
+            const mult = Number(template?.vote_multiplier);
+            if (!isNaN(mult) && mult > 0) {
+              nftMultiplier += (mult - 1.0);
+            }
+          });
+        }
+        return {
+          telegram_id: u.telegram_id,
+          username: u.username,
+          favorite_nation: u.favorite_nation,
+          nft_multiplier: nftMultiplier
+        };
+      });
+      
+      computed.sort((a, b) => b.nft_multiplier - a.nft_multiplier);
+      const rankedData = computed.slice(0, limit).map((item, index) => ({
+        ...item,
+        rank: index + 1
+      }));
+      return res.status(200).json(rankedData);
     }
 
     const { data, error } = await query;

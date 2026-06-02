@@ -27,15 +27,7 @@ class ApiClient {
       options.body = JSON.stringify(body);
     }
 
-    let finalPath = path;
-    if (!path.startsWith('http')) {
-      const [routePart, queryPart] = path.replace(/^\//, '').split('?');
-      if (routePart && routePart !== 'main') {
-        finalPath = `/main?route=${routePart}${queryPart ? '&' + queryPart : ''}`;
-      }
-    }
-
-    const url = finalPath.startsWith('http') ? finalPath : `${this.baseUrl}${finalPath}`;
+    const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
     const response = await fetch(url, options);
     const data = await response.json();
 
