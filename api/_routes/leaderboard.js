@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   
   const initData = req.headers['x-telegram-init-data'];
-  const user = validateInitData(initData) || (req.query.test ? { id: 7028261447, username: 'test' } : null);
+  const user = validateInitData(initData);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
