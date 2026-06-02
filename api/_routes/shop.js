@@ -61,6 +61,8 @@ export default async function handler(req, res) {
         // Apply item effects
         if (item.type === 'energy') {
           updates.energy = Math.min((dbUser.energy || 0) + totalValue, dbUser.max_energy || 1000);
+        } else if (item.type === 'max_energy') {
+          updates.max_energy = (dbUser.max_energy || 1000) + totalValue;
         } else if (item.type === 'spin_ticket') {
           updates.spin_tickets = (dbUser.spin_tickets || 0) + totalValue;
         } else if (item.type === 'vote_pack') {
