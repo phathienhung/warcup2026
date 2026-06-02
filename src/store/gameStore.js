@@ -16,6 +16,7 @@ export const useGameStore = create((set, get) => ({
   tapCount: 0,
   pendingTaps: 0,
   isSyncing: false,
+  syncTimeout: null,
 
   // ── Config State ──────────────────────────────────
   nations: [],
@@ -81,9 +82,16 @@ export const useGameStore = create((set, get) => ({
       pendingTaps: state.pendingTaps + touchCount,
     });
 
-    // Debounced sync to server
+    // Sync immediately if we hit 5 taps
     if (state.pendingTaps + touchCount >= 5) {
       get().syncTaps();
+    } else {
+      // Otherwise, set a timeout to sync after 1 second of inactivity
+      if (state.syncTimeout) clearTimeout(state.syncTimeout);
+      const timeout = setTimeout(() => {
+        if (get().pendingTaps > 0) get().syncTaps();
+      }, 1000);
+      set({ syncTimeout: timeout });
     }
 
     return { success: true, votes: votesEarned };
@@ -107,6 +115,11 @@ export const useGameStore = create((set, get) => ({
         availableVotes: result.stats.availableVotes ?? get().availableVotes,
         isSyncing: false,
       });
+      
+      // If user kept tapping while we were syncing, trigger another sync immediately
+      if (get().pendingTaps > 0) {
+        get().syncTaps();
+      }
     } catch (err) {
       console.error('[Game] Sync failed:', err);
       set((s) => ({ pendingTaps: s.pendingTaps + tapsToSync, isSyncing: false }));
