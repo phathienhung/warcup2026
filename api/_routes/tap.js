@@ -66,13 +66,31 @@ export default async function handler(req, res) {
       const energyGained = Math.floor(diffMs / regenRateMs) * stats.regen.final;
       
       const currentRegennedEnergy = Math.min(stats.maxEnergy.final, (dbUser.energy || 0) + energyGained);
-      const energyCost = count * speed; // Energy cost scales with mining speed
+      let validCount = count;
+      let energyCost = validCount * speed;
       if (currentRegennedEnergy < energyCost) {
-        return res.status(400).json({ error: 'Not enough energy', energy: currentRegennedEnergy });
+        // Graceful clamping instead of 400 error to prevent client desync deadlocks
+        validCount = Math.floor(currentRegennedEnergy / speed);
+        energyCost = validCount * speed;
+      }
+      
+      if (validCount <= 0 && count > 0) {
+        // If they can't even afford 1 tap, return success but 0 votes so client sync clears pendingTaps
+        return res.status(200).json({
+          success: true,
+          stats: {
+            energy: currentRegennedEnergy,
+            totalVotes: Number(dbUser.total_votes),
+            availableVotes: Number(dbUser.available_votes),
+            xp: Number(dbUser.xp),
+            level: dbUser.level || 1,
+            miningSpeed: speed
+          }
+        });
       }
 
-      const votesGained = count * speed;
-      const xpGained = count; // 1 tap = 1 XP
+      const votesGained = validCount * speed;
+      const xpGained = validCount; // 1 tap = 1 XP
       
       const newEnergy = Math.max(0, currentRegennedEnergy - energyCost);
       const newTotalVotes = Number(dbUser.total_votes) + votesGained;
@@ -122,7 +140,8 @@ export default async function handler(req, res) {
           totalVotes: newTotalVotes,
           availableVotes: newAvailableVotes,
           xp: newXp,
-          level: newLevel
+          level: newLevel,
+          miningSpeed: speed
         }
       });
     } catch (err) {

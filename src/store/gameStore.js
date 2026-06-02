@@ -110,11 +110,12 @@ export const useGameStore = create((set, get) => ({
       // Only sync votes from server. DO NOT overwrite energy here because
       // the client regen timer has been adding energy while the sync was in-flight.
       // Energy is authoritative on the client during a session.
-      set({
-        totalVotes: result.stats.totalVotes ?? get().totalVotes,
-        availableVotes: result.stats.availableVotes ?? get().availableVotes,
+      set((state) => ({
+        totalVotes: result.stats.totalVotes ?? state.totalVotes,
+        availableVotes: result.stats.availableVotes ?? state.availableVotes,
+        miningSpeed: result.stats.miningSpeed ?? state.miningSpeed,
         isSyncing: false,
-      });
+      }));
       
       // If user kept tapping while we were syncing, trigger another sync immediately
       if (get().pendingTaps > 0) {
