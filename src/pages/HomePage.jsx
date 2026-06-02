@@ -311,16 +311,46 @@ function SpinModalContent() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [wonPrize, setWonPrize] = useState(null);
+  const [spinInfo, setSpinInfo] = useState({ tickets: 0, daily_free_spin_available: false });
   
   const segments = useGameStore(s => s.spinSegments) || [];
   const segCount = segments.length;
 
-  const handleSpin = () => {
+  useEffect(() => {
+    loadSpinInfo();
+  }, []);
+
+  const loadSpinInfo = async () => {
+    try {
+      const res = await api.getSpinInfo();
+      setSpinInfo(res);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSpin = async () => {
     if (spinning || segCount === 0) return;
+    if (!spinInfo.daily_free_spin_available && spinInfo.tickets <= 0) {
+      alert("You don't have any spin tickets! Buy some in the Shop.");
+      return;
+    }
+    
     setSpinning(true);
     setWonPrize(null);
 
-    const target = Math.floor(Math.random() * segCount);
+    let target;
+    try {
+      const res = await api.spin('start_spin', null, segCount);
+      if (!res.success) throw new Error(res.error || 'Failed to start spin');
+      target = res.targetIndex;
+      loadSpinInfo(); // Update UI tickets immediately
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
+      setSpinning(false);
+      return;
+    }
     const segmentAngle = 360 / segCount;
 
     // Segment 0 is now centered at the top.
@@ -449,7 +479,21 @@ function SpinModalContent() {
         </div>
       )}
       
-      <button className="btn btn-gold btn-lg mt-lg btn-full" onClick={handleSpin} disabled={spinning}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '16px', fontSize: '0.9rem' }}>
+        <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '12px' }}>
+          🎟️ Tickets: <strong>{spinInfo.tickets}</strong>
+        </div>
+        <div style={{ background: spinInfo.daily_free_spin_available ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '12px', color: spinInfo.daily_free_spin_available ? 'var(--neon-green)' : 'inherit' }}>
+          🎁 Free Spin: <strong>{spinInfo.daily_free_spin_available ? '1' : '0'}</strong>
+        </div>
+      </div>
+
+      <button 
+        className="btn btn-gold btn-lg mt-sm btn-full" 
+        onClick={handleSpin} 
+        disabled={spinning || (!spinInfo.daily_free_spin_available && spinInfo.tickets <= 0)}
+        style={{ opacity: (spinning || (!spinInfo.daily_free_spin_available && spinInfo.tickets <= 0)) ? 0.5 : 1 }}
+      >
         {spinning ? 'SPINNING...' : 'SPIN NOW'}
       </button>
     </div>

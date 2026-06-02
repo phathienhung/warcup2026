@@ -10,11 +10,38 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    return res.status(200).json({ tickets: 1, daily_free_spin_available: true });
+    const { data: dbUser } = await supabase.from('users').select('spin_tickets, last_free_spin').eq('telegram_id', user.id).single();
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+    
+    const today = new Date().toISOString().split('T')[0];
+    const daily_free_spin_available = dbUser.last_free_spin !== today;
+    
+    return res.status(200).json({ 
+      tickets: dbUser.spin_tickets || 0, 
+      daily_free_spin_available 
+    });
   }
 
   if (req.method === 'POST') {
-    const { action, reward } = req.body;
+    const { action, reward, segCount } = req.body;
+    
+    if (action === 'start_spin') {
+      const { data: dbUser } = await supabase.from('users').select('spin_tickets, last_free_spin').eq('telegram_id', user.id).single();
+      if (!dbUser) return res.status(404).json({ error: 'User not found' });
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (dbUser.last_free_spin !== today) {
+        await supabase.from('users').update({ last_free_spin: today }).eq('telegram_id', user.id);
+      } else if (dbUser.spin_tickets > 0) {
+        await supabase.from('users').update({ spin_tickets: dbUser.spin_tickets - 1 }).eq('telegram_id', user.id);
+      } else {
+        return res.status(400).json({ error: 'No tickets available' });
+      }
+      
+      const targetIndex = Math.floor(Math.random() * (segCount || 8));
+      return res.status(200).json({ success: true, targetIndex });
+    }
     
     if (action === 'save_reward' && reward) {
       try {

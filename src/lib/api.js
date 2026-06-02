@@ -196,8 +196,8 @@ class ApiClient {
   }
 
   // ── Spin ──────────────────────────────────────────
-  spin(action = 'spin', reward = null) {
-    return this.post('/spin', { action, reward });
+  spin(action = 'spin', reward = null, segCount = 8) {
+    return this.post('/spin', { action, reward, segCount });
   }
 
   getSpinInfo() {
