@@ -13,20 +13,69 @@ export default async function handler(req, res) {
     const limit = parseInt(req.query.limit || '100', 10);
     
     if (type === 'multiplier') {
-      const { data, error } = await supabase
-        .from('user_nft_multipliers')
-        .select('telegram_id, username, favorite_nation, avatar_url, nft_multiplier, nft_count')
-        .order('nft_multiplier', { ascending: false })
-        .limit(limit);
+      try {
+        // Query user_nfts joined with nft_templates, grouped by user
+        const { data: nftData, error: nftError } = await supabase
+          .from('user_nfts')
+          .select('user_id, nft_template_id, nft_templates(vote_multiplier)');
         
-      if (error) return res.status(500).json({ error: error.message });
-      
-      const rankedData = data.map((item, index) => ({
-        ...item,
-        total_votes: item.nft_multiplier.toFixed(2) + 'x', // Reuse total_votes field for UI rendering
-        rank: index + 1
-      }));
-      return res.status(200).json(rankedData);
+        if (nftError) {
+          console.error('NFT query error:', nftError);
+          return res.status(500).json({ error: nftError.message });
+        }
+
+        // Aggregate multipliers per user
+        const userMultipliers = {};
+        for (const nft of (nftData || [])) {
+          const uid = nft.user_id;
+          if (!userMultipliers[uid]) {
+            userMultipliers[uid] = { total: 1.0, count: 0 };
+          }
+          const vm = nft.nft_templates?.vote_multiplier || 1;
+          userMultipliers[uid].total += (vm - 1.0);
+          userMultipliers[uid].count += 1;
+        }
+
+        // Get user info for those users
+        const userIds = Object.keys(userMultipliers).map(Number);
+        if (userIds.length === 0) {
+          return res.status(200).json([]);
+        }
+
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('telegram_id, username, favorite_nation, avatar_url')
+          .in('telegram_id', userIds);
+
+        if (usersError) {
+          console.error('Users query error:', usersError);
+          return res.status(500).json({ error: usersError.message });
+        }
+
+        // Merge and sort
+        const merged = (usersData || []).map(u => ({
+          telegram_id: u.telegram_id,
+          username: u.username,
+          favorite_nation: u.favorite_nation,
+          avatar_url: u.avatar_url,
+          nft_multiplier: userMultipliers[u.telegram_id]?.total || 1.0,
+          nft_count: userMultipliers[u.telegram_id]?.count || 0,
+        }));
+
+        merged.sort((a, b) => b.nft_multiplier - a.nft_multiplier);
+        const limited = merged.slice(0, limit);
+
+        const rankedData = limited.map((item, index) => ({
+          ...item,
+          total_votes: Number(item.nft_multiplier).toFixed(2) + 'x',
+          rank: index + 1
+        }));
+
+        return res.status(200).json(rankedData);
+      } catch (e) {
+        console.error('Multiplier leaderboard error:', e);
+        return res.status(500).json({ error: 'Failed to load multiplier leaderboard', detail: e.message });
+      }
     }
     
     let query = supabase

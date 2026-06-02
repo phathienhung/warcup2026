@@ -6,6 +6,7 @@ import { formatNumber } from '../data/constants';
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState('global');
   const [data, setData] = useState([]);
+  const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const { user } = useUserStore();
 
@@ -15,11 +16,13 @@ export default function LeaderboardPage() {
 
   const loadLeaderboard = async () => {
     setLoading(true);
+    setErrorMsg('');
     try {
       const result = await api.getLeaderboard(activeTab, 100);
       setData(result || []);
     } catch (err) {
-      console.error(err);
+      console.error('Leaderboard error:', err);
+      setErrorMsg(err.message || 'Failed to load');
       setData([]);
     } finally {
       setLoading(false);
@@ -74,6 +77,12 @@ export default function LeaderboardPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="card mb-md" style={{ background: 'rgba(255,0,0,0.15)', border: '1px solid red', padding: '12px', fontSize: '0.8rem', color: '#ff6b6b' }}>
+          ⚠️ Error: {errorMsg}
         </div>
       )}
 
