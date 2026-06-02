@@ -378,7 +378,7 @@ function SpinModalContent() {
       
       // Apply reward locally
       if (reward.type === 'energy') {
-        useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
+        useGameStore.setState(s => ({ energy: s.energy + reward.reward }));
       } else if (reward.type === 'votes') {
         useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
       } else if (reward.type === 'speed') {

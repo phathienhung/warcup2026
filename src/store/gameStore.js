@@ -130,9 +130,12 @@ export const useGameStore = create((set, get) => ({
   // ── Energy Regeneration ───────────────────────────
   startEnergyRegen() {
     const interval = setInterval(() => {
-      set((state) => ({
-        energy: Math.min(state.maxEnergy, state.energy + state.energyRegenAmount),
-      }));
+      set((state) => {
+        if (state.energy < state.maxEnergy) {
+          return { energy: Math.min(state.maxEnergy, state.energy + state.energyRegenAmount) };
+        }
+        return {};
+      });
     }, get().energyRegenRateMs);
     set({ energyRegenInterval: interval });
   },

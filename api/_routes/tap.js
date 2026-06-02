@@ -65,7 +65,10 @@ export default async function handler(req, res) {
       const regenRateMs = 1000;
       const energyGained = Math.floor(diffMs / regenRateMs) * stats.regen.final;
       
-      const currentRegennedEnergy = Math.min(stats.maxEnergy.final, (dbUser.energy || 0) + energyGained);
+      let currentRegennedEnergy = dbUser.energy || 0;
+      if (currentRegennedEnergy < stats.maxEnergy.final) {
+        currentRegennedEnergy = Math.min(stats.maxEnergy.final, currentRegennedEnergy + energyGained);
+      }
       let validCount = count;
       let energyCost = validCount * speed;
       if (currentRegennedEnergy < energyCost) {

@@ -171,6 +171,8 @@ export default async function handler(req, res) {
           updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + task.reward_value;
         } else if (task.reward_type === 'max_energy') {
           updates.max_energy = (dbUser.max_energy || 1000) + task.reward_value;
+        } else if (task.reward_type === 'energy') {
+          updates.energy = (dbUser.energy || 0) + task.reward_value;
         } else if (task.reward_type === 'votes') {
           updates.total_votes = (dbUser.total_votes || 0) + task.reward_value;
           updates.available_votes = (dbUser.available_votes || 0) + task.reward_value;
