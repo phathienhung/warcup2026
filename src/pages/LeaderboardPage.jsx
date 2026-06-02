@@ -16,22 +16,28 @@ export default function LeaderboardPage() {
   const loadLeaderboard = async () => {
     setLoading(true);
     try {
-      // Mock data for dev
-      setTimeout(() => {
-        setData([
-          { id: 1, rank: 1, username: 'CryptoKing', favorite_nation: 'BR', total_votes: 12500000 },
-          { id: 2, rank: 2, username: 'MessiFan', favorite_nation: 'AR', total_votes: 9800000 },
-          { id: 3, rank: 3, username: 'NinjaTap', favorite_nation: 'JP', total_votes: 7500000 },
-          { id: 4, rank: 4, username: user?.username || 'You', favorite_nation: user?.favorite_nation || 'US', total_votes: 5200000 },
-          { id: 5, rank: 5, username: 'MbappeSpeed', favorite_nation: 'FR', total_votes: 4100000 },
-        ]);
-        setLoading(false);
-      }, 500);
+      const result = await api.getLeaderboard(activeTab, 100);
+      setData(result || []);
     } catch (err) {
       console.error(err);
+      setData([]);
+    } finally {
       setLoading(false);
     }
   };
+
+  const rewardPool = [
+    { rank: 1, type: "ton", amount: 10 },
+    { rank: 2, type: "ton", amount: 5 },
+    { rank: 3, type: "ton", amount: 3 },
+    { rank: 4, type: "ton", amount: 2 },
+    { rank: 5, type: "ton", amount: 1 },
+    { rank: 6, type: "ton", amount: 0.5 },
+    { rank: 7, type: "ton", amount: 0.4 },
+    { rank: 8, type: "ton", amount: 0.3 },
+    { rank: 9, type: "ton", amount: 0.2 },
+    { rank: 10, type: "ton", amount: 0.1 }
+  ];
 
   const renderRank = (rank) => {
     if (rank === 1) return <div className="leaderboard-rank gold">👑</div>;
@@ -47,11 +53,29 @@ export default function LeaderboardPage() {
         <div className="page-subtitle">Compete for the top spot</div>
       </div>
 
-      <div className="tabs mb-lg">
+      <div className="tabs mb-lg" style={{ flexWrap: 'wrap', gap: '8px' }}>
         <button className={`tab ${activeTab === 'global' ? 'active' : ''}`} onClick={() => setActiveTab('global')}>Global</button>
         <button className={`tab ${activeTab === 'nation' ? 'active' : ''}`} onClick={() => setActiveTab('nation')}>Nation</button>
         <button className={`tab ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>Friends</button>
+        <button className={`tab ${activeTab === 'multiplier' ? 'active' : ''}`} onClick={() => setActiveTab('multiplier')}>NFT Multipliers</button>
       </div>
+
+      {activeTab === 'multiplier' && (
+        <div className="card mb-md" style={{ background: 'linear-gradient(135deg, rgba(255,215,0,0.1), rgba(0,212,255,0.1))', border: '1px solid var(--gold)' }}>
+          <h3 className="text-center" style={{ color: 'var(--gold)', marginBottom: '10px' }}>🏆 World Cup 2026 Rewards 🏆</h3>
+          <p className="text-center" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
+            Top 10 players with the highest NFT Multipliers will receive TON rewards when the World Cup ends!
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {rewardPool.map(r => (
+              <div key={r.rank} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.9rem' }}>
+                <span style={{ color: r.rank <= 3 ? 'var(--gold)' : 'var(--text-primary)' }}>Top {r.rank}</span>
+                <span style={{ fontWeight: 'bold', color: '#00d4ff' }}>{r.amount} TON</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex-center" style={{ height: '200px' }}>
@@ -60,13 +84,15 @@ export default function LeaderboardPage() {
       ) : (
         <div className="leaderboard-list">
           {data.map((item) => (
-            <div key={item.id} className={`leaderboard-item ${item.username === user?.username ? 'is-self' : ''}`}>
+            <div key={item.telegram_id || item.id} className={`leaderboard-item ${item.username === user?.username ? 'is-self' : ''}`}>
               {renderRank(item.rank)}
               <div className="leaderboard-info">
                 <div className="leaderboard-name">{item.username}</div>
                 <div className="leaderboard-nation">Team {item.favorite_nation || 'Unknown'}</div>
               </div>
-              <div className="leaderboard-score">{formatNumber(item.total_votes)}</div>
+              <div className="leaderboard-score" style={{ color: activeTab === 'multiplier' ? 'var(--gold)' : 'var(--primary)' }}>
+                {activeTab === 'multiplier' ? item.total_votes : formatNumber(item.total_votes)}
+              </div>
             </div>
           ))}
         </div>

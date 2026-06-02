@@ -12,6 +12,23 @@ export default async function handler(req, res) {
     const type = req.query.type || 'global';
     const limit = parseInt(req.query.limit || '100', 10);
     
+    if (type === 'multiplier') {
+      const { data, error } = await supabase
+        .from('user_nft_multipliers')
+        .select('telegram_id, username, favorite_nation, avatar_url, nft_multiplier, nft_count')
+        .order('nft_multiplier', { ascending: false })
+        .limit(limit);
+        
+      if (error) return res.status(500).json({ error: error.message });
+      
+      const rankedData = data.map((item, index) => ({
+        ...item,
+        total_votes: item.nft_multiplier.toFixed(2) + 'x', // Reuse total_votes field for UI rendering
+        rank: index + 1
+      }));
+      return res.status(200).json(rankedData);
+    }
+    
     let query = supabase
       .from('users')
       .select('telegram_id, username, favorite_nation, total_votes')
