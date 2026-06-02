@@ -52,7 +52,7 @@ export default async function handler(req, res) {
         const updates = {};
         
         if (reward.type === 'energy') {
-          updates.energy = Math.min(dbUser.max_energy || 1000, (dbUser.energy || 0) + reward.reward);
+          updates.energy = (dbUser.energy || 0) + reward.reward;
         } else if (reward.type === 'votes') {
           updates.total_votes = (dbUser.total_votes || 0) + reward.reward;
           updates.available_votes = (dbUser.available_votes || 0) + reward.reward;
