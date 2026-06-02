@@ -4,7 +4,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/bot", "destination": "/api/bot" },
-    { "source": "/api/:route", "destination": "/api/main?route=:route" },
+    { "source": "/api/:match*", "destination": "/api/main" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

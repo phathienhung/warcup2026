@@ -22,7 +22,10 @@ export default async function handler(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
-  const route = req.query.route;
+  // Parse route from URL (e.g. /api/leaderboard?type=multiplier -> leaderboard)
+  // In Vercel, req.url might be /api/leaderboard?type=multiplier or /leaderboard?type=multiplier
+  const urlPath = req.url.split('?')[0];
+  const route = urlPath.replace(/^\/api\//, '').replace(/^\//, '') || req.query.route;
   
   switch(route) {
     case 'auth': return authHandler(req, res);
@@ -30,9 +33,6 @@ export default async function handler(req, res) {
     case 'tap': return tapHandler(req, res);
     case 'tasks': return tasksHandler(req, res);
     case 'leaderboard': return leaderboardHandler(req, res);
-    case 'leaderboard-multiplier':
-      req.query.type = 'multiplier';
-      return leaderboardHandler(req, res);
     case 'prediction': return predictionHandler(req, res);
     case 'shop': return shopHandler(req, res);
     case 'nft': return nftHandler(req, res);

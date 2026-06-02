@@ -98,9 +98,6 @@ class ApiClient {
 
   // ── Leaderboard ───────────────────────────────────
   getLeaderboard(type = 'global', limit = 100) {
-    if (type === 'multiplier') {
-      return this.get(`/leaderboard-multiplier?limit=${limit}`);
-    }
     return this.get(`/leaderboard?type=${type}&limit=${limit}`);
   }
 

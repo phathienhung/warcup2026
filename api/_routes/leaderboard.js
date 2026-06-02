@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    const type = req.query.type || (req.query.route === 'leaderboard-multiplier' ? 'multiplier' : 'global');
+    const type = req.query.type || 'global';
     const limit = parseInt(req.query.limit || '100', 10);
     
     if (type === 'multiplier') {
