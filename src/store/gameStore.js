@@ -115,6 +115,9 @@ export const useGameStore = create((set, get) => ({
         totalVotes: result.stats.totalVotes ?? state.totalVotes,
         availableVotes: result.stats.availableVotes ?? state.availableVotes,
         miningSpeed: result.stats.miningSpeed ?? state.miningSpeed,
+        miningSpeedBase: result.stats.miningSpeedBase ?? state.miningSpeedBase,
+        miningSpeedMultiply: result.stats.miningSpeedMultiply ?? state.miningSpeedMultiply,
+        nationMultiplier: result.stats.nationMultiplier ?? state.nationMultiplier,
         isSyncing: false,
       }));
       

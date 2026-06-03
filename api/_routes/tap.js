@@ -93,7 +93,10 @@ export default async function handler(req, res) {
             availableVotes: Number(dbUser.available_votes),
             xp: Number(dbUser.xp),
             level: dbUser.level || 1,
-            miningSpeed: speed
+            miningSpeed: speed,
+            miningSpeedBase: stats.speed.base,
+            miningSpeedMultiply: stats.speed.multiply,
+            nationMultiplier: stats.nationMultiplier
           }
         });
       }
@@ -150,7 +153,10 @@ export default async function handler(req, res) {
           availableVotes: newAvailableVotes,
           xp: newXp,
           level: newLevel,
-          miningSpeed: speed
+          miningSpeed: speed,
+          miningSpeedBase: stats.speed.base,
+          miningSpeedMultiply: stats.speed.multiply,
+          nationMultiplier: stats.nationMultiplier
         }
       });
     } catch (err) {
