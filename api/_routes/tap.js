@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       // 1. Get current user stats
       const { data: dbUser } = await supabase
         .from('users')
-        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, energy_regen_bonus, last_login, boost_multiplier, boost_expires_at')
+        .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, energy_regen_bonus, last_login, boost_multiplier, boost_expires_at, favorite_nation')
         .eq('telegram_id', user.id)
         .single();
 

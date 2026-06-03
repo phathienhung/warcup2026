@@ -12,7 +12,9 @@ ON CONFLICT (tier) DO UPDATE SET
     knockout_bonus = EXCLUDED.knockout_bonus;
 
 -- 3. Cập nhật View để FIX lỗi mất cờ và chuyển sang cơ chế Hệ số Cố định
-CREATE OR REPLACE VIEW vw_nation_multipliers AS
+DROP VIEW IF EXISTS vw_nation_multipliers;
+
+CREATE VIEW vw_nation_multipliers AS
 WITH nation_counts AS (
   SELECT favorite_nation, COUNT(*) as users_count
   FROM users
