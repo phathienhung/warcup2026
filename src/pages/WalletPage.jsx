@@ -69,6 +69,12 @@ export default function WalletPage() {
   };
 
   const handleWithdraw = async () => {
+    if (tonDeposited <= 0) {
+      return alert('Deposit TON to get 10% daily withdrawal quota.');
+    }
+    if (availableToWithdrawToday <= 0) {
+      return alert('Daily withdrawal limit reached. Please come back tomorrow.');
+    }
     if (!withdrawAmount || Number(withdrawAmount) <= 0) return alert('Enter a valid withdraw amount');
     if (!address) {
       alert('Please connect your wallet first!');
@@ -236,14 +242,12 @@ export default function WalletPage() {
             style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
             value={withdrawAmount}
             onChange={(e) => setWithdrawAmount(e.target.value)}
-            disabled={tonDeposited <= 0 || availableToWithdrawToday <= 0}
           />
           <button 
             className="btn btn-outline btn-full mt-sm" 
             onClick={handleWithdraw}
-            disabled={tonDeposited <= 0 || availableToWithdrawToday <= 0}
           >
-            {tonDeposited <= 0 ? 'DEPOSIT TON FIRST' : 'REQUEST WITHDRAWAL'}
+            REQUEST WITHDRAWAL
           </button>
 
           {history.filter(tx => tx.tx_type === 'withdraw').length > 0 && (
