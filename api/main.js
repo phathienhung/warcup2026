@@ -12,6 +12,8 @@ import spinHandler from './_routes/spin.js';
 import configHandler from './_routes/config.js';
 import walletHandler from './_routes/wallet.js';
 import announcementsHandler from './_routes/announcements.js';
+import adsHandler from './_routes/ads.js';
+import exchangeHandler from './_routes/exchange.js';
 
 export default async function handler(req, res) {
   // CORS Preflight
@@ -34,6 +36,8 @@ export default async function handler(req, res) {
     case 'config': return configHandler(req, res);
     case 'wallet': return walletHandler(req, res);
     case 'announcements': return announcementsHandler(req, res);
+    case 'ads': return adsHandler(req, res);
+    case 'exchange': return exchangeHandler(req, res);
     default: return res.status(404).json({ error: 'Route not found' });
   }
 }
