@@ -47,6 +47,32 @@ export default async function handler(req, res) {
     if (action === 'predict') {
       const { matchId, team, votesStaked } = req.body;
       
+      try {
+        // 1. Get user votes
+        const { data: dbUser } = await supabase.from('users').select('available_votes').eq('telegram_id', user.id).single();
+        if (!dbUser || Number(dbUser.available_votes) < votesStaked) {
+          return res.status(400).json({ error: 'Not enough available votes' });
+        }
+
+        // 2. Get Match
+        const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single();
+        if (!match) return res.status(404).json({ error: 'Match not found' });
+        if (new Date(match.match_date).getTime() < Date.now()) {
+          return res.status(400).json({ error: 'Match has already started' });
+        }
+        
+        // 3. Deduct votes
+        await supabase.from('users').update({ available_votes: Number(dbUser.available_votes) - votesStaked }).eq('telegram_id', user.id);
+        
+        // 4. Upsert Prediction
+        const { data: existingPred } = await supabase.from('predictions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('match_id', matchId)
+          .eq('predicted_team', team)
+          .maybeSingle();
+
+        let isNewOutcomeForUser = false;
       if (existingPred) {
         // Accumulate
         await supabase.from('predictions')
@@ -86,9 +112,13 @@ export default async function handler(req, res) {
       if (team === 'B') updateData.total_votes_b = Number(match.total_votes_b || 0) + votesStaked;
       if (team === 'DRAW') updateData.total_votes_draw = Number(match.total_votes_draw || 0) + votesStaked;
 
-      await supabase.from('matches').update(updateData).eq('id', matchId);
+        await supabase.from('matches').update(updateData).eq('id', matchId);
 
-      return res.status(200).json({ success: true });
+        return res.status(200).json({ success: true, newAvailableVotes: Number(dbUser.available_votes) - votesStaked });
+      } catch (err) {
+        console.error('Prediction error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
     }
 
     if (action === 'unstake') {
