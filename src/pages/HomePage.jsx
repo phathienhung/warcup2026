@@ -542,7 +542,13 @@ function ExchangeModalContent() {
         if (err?.error === 'skip' || err?.done === false) {
           alert('Please watch the ad to the end.');
         } else {
-          alert('No ads available right now. Try again later.');
+          // No ads available or ad blocker, let's just count it for the user
+          const res = await api.watchAd();
+          if (res.success) {
+            useGameStore.setState({ adsWatched: res.adsWatched });
+            telegram.haptic.notification('success');
+            alert('No ads available right now, but we counted it anyway!');
+          }
         }
       } finally {
         setLoading(false);
