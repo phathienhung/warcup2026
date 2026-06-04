@@ -38,18 +38,43 @@ export default async function handler(req, res) {
       try {
         const { data: dbUser } = await supabase
           .from('users')
-          .select('ton_balance, username')
+          .select('ton_balance, username, ton_deposited, ton_withdrawn_today, last_withdrawal_date')
           .eq('telegram_id', user.id)
           .single();
 
-        if (!dbUser || dbUser.ton_balance < amount) {
+        if (!dbUser) return res.status(400).json({ error: 'User not found' });
+        
+        if (dbUser.ton_balance < amount) {
           return res.status(400).json({ error: 'Insufficient balance' });
         }
+        
+        const tonDeposited = Number(dbUser.ton_deposited || 0);
+        if (tonDeposited <= 0) {
+          return res.status(400).json({ error: 'You must deposit TON first to unlock withdrawals.' });
+        }
 
-        // Deduct balance and create pending transaction
+        // Check Daily Limit
+        const todayStr = new Date().toISOString().split('T')[0];
+        let withdrawnToday = Number(dbUser.ton_withdrawn_today || 0);
+        const lastWithdrawalDateStr = dbUser.last_withdrawal_date ? new Date(dbUser.last_withdrawal_date).toISOString().split('T')[0] : null;
+        
+        if (lastWithdrawalDateStr !== todayStr) {
+          withdrawnToday = 0; // Reset for new day
+        }
+        
+        const dailyLimit = tonDeposited * 0.1;
+        if (withdrawnToday + amount > dailyLimit) {
+          return res.status(400).json({ error: `Daily limit exceeded. You can only withdraw up to ${(dailyLimit - withdrawnToday).toFixed(3)} TON today.` });
+        }
+
+        // Deduct balance, update daily limit stats, create pending transaction
         await supabase
           .from('users')
-          .update({ ton_balance: dbUser.ton_balance - amount })
+          .update({ 
+            ton_balance: Number(dbUser.ton_balance) - amount,
+            ton_withdrawn_today: withdrawnToday + amount,
+            last_withdrawal_date: new Date().toISOString()
+          })
           .eq('telegram_id', user.id);
 
         const { data: tx, error: txError } = await supabase
@@ -92,14 +117,15 @@ export default async function handler(req, res) {
         // Automatic Deposit Approval MVP
         const { data: dbUser } = await supabase
           .from('users')
-          .select('ton_balance, username')
+          .select('ton_balance, ton_deposited, username')
           .eq('telegram_id', user.id)
           .single();
           
-        const newBalance = (dbUser?.ton_balance || 0) + amount;
+        const newBalance = Number(dbUser?.ton_balance || 0) + amount;
+        const newDeposited = Number(dbUser?.ton_deposited || 0) + amount;
 
-        // 1. Add balance
-        await supabase.from('users').update({ ton_balance: newBalance }).eq('telegram_id', user.id);
+        // 1. Add balance & total deposited
+        await supabase.from('users').update({ ton_balance: newBalance, ton_deposited: newDeposited }).eq('telegram_id', user.id);
 
         // 2. Insert completed tx
         const { data: tx, error: txError } = await supabase

@@ -160,6 +160,9 @@ export default async function handler(req, res) {
         nft_count: dbUser.nft_count || 0,
         ads_watched: dbUser.ads_watched || 0,
         ton_balance: dbUser.ton_balance || 0,
+        ton_deposited: dbUser.ton_deposited || 0,
+        ton_withdrawn_today: dbUser.ton_withdrawn_today || 0,
+        last_withdrawal_date: dbUser.last_withdrawal_date || null,
         claimed_friend_milestones: dbUser.claimed_friend_milestones || []
       } 
     });

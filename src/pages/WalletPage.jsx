@@ -11,7 +11,7 @@ export default function WalletPage() {
   const [tonConnectUI] = useTonConnectUI();
   const address = useTonAddress(false);
   const friendlyAddress = useTonAddress();
-  const { availableVotes, tonBalance } = useGameStore();
+  const { availableVotes, tonBalance, tonDeposited, tonWithdrawnToday, lastWithdrawalDate } = useGameStore();
 
   const loadHistory = () => {
     api.getWalletHistory().then(setHistory).catch(console.error);
@@ -82,7 +82,17 @@ export default function WalletPage() {
     try {
       const res = await api.withdrawWallet(Number(withdrawAmount), address);
       if (res.success) {
-        useGameStore.setState({ tonBalance: res.newBalance });
+        // Optimistically update
+        const todayStr = new Date().toISOString().split('T')[0];
+        let newWithdrawnToday = Number(withdrawAmount);
+        if (lastWithdrawalDate && new Date(lastWithdrawalDate).toISOString().split('T')[0] === todayStr) {
+          newWithdrawnToday += (tonWithdrawnToday || 0);
+        }
+        useGameStore.setState({ 
+          tonBalance: res.newBalance,
+          tonWithdrawnToday: newWithdrawnToday,
+          lastWithdrawalDate: new Date().toISOString()
+        });
         alert(`Withdrawal of ${withdrawAmount} TON to ${friendlyAddress?.slice(0,8)}...${friendlyAddress?.slice(-6)} submitted! Pending admin approval.`);
         setWithdrawAmount('');
         loadHistory();
@@ -96,6 +106,15 @@ export default function WalletPage() {
   const shortAddr = friendlyAddress 
     ? `${friendlyAddress.slice(0, 6)}...${friendlyAddress.slice(-4)}` 
     : null;
+
+  // Calculate Daily Limit
+  const todayStr = new Date().toISOString().split('T')[0];
+  let withdrawnToday = tonWithdrawnToday || 0;
+  if (lastWithdrawalDate && new Date(lastWithdrawalDate).toISOString().split('T')[0] !== todayStr) {
+    withdrawnToday = 0; // Reset
+  }
+  const dailyLimit = (tonDeposited || 0) * 0.1;
+  const availableToWithdrawToday = Math.max(0, dailyLimit - withdrawnToday);
 
   return (
     <div className="page" style={{ overflowY: 'auto', paddingBottom: '100px' }}>
@@ -134,6 +153,20 @@ export default function WalletPage() {
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>TON Balance</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00d4ff', fontFamily: 'var(--font-display)' }}>
                 {(tonBalance || 0).toFixed(3)}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Total Deposited</div>
+              <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                {(tonDeposited || 0).toFixed(3)} TON
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Daily Limit</div>
+              <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--neon-blue)' }}>
+                {dailyLimit.toFixed(3)} TON
               </div>
             </div>
           </div>
@@ -182,6 +215,20 @@ export default function WalletPage() {
         {/* Withdraw */}
         <div className="card mb-md">
           <h3 className="mb-sm">Withdraw TON</h3>
+          
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+            <div className="flex-between mb-xs">
+              <span style={{ color: 'var(--text-secondary)' }}>Available today:</span>
+              <span style={{ fontWeight: 'bold', color: availableToWithdrawToday > 0 ? 'var(--neon-green)' : 'var(--energy-red)' }}>
+                {availableToWithdrawToday.toFixed(3)} TON
+              </span>
+            </div>
+            <div className="flex-between">
+              <span style={{ color: 'var(--text-secondary)' }}>Already withdrawn:</span>
+              <span>{withdrawnToday.toFixed(3)} / {dailyLimit.toFixed(3)} TON</span>
+            </div>
+          </div>
+
           <input 
             type="number" 
             placeholder="Amount (TON)" 
@@ -189,8 +236,15 @@ export default function WalletPage() {
             style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px', width: '100%', textAlign: 'center' }}
             value={withdrawAmount}
             onChange={(e) => setWithdrawAmount(e.target.value)}
+            disabled={tonDeposited <= 0 || availableToWithdrawToday <= 0}
           />
-          <button className="btn btn-outline btn-full mt-sm" onClick={handleWithdraw}>Request Withdrawal</button>
+          <button 
+            className="btn btn-outline btn-full mt-sm" 
+            onClick={handleWithdraw}
+            disabled={tonDeposited <= 0 || availableToWithdrawToday <= 0}
+          >
+            {tonDeposited <= 0 ? 'DEPOSIT TON FIRST' : 'REQUEST WITHDRAWAL'}
+          </button>
 
           {history.filter(tx => tx.tx_type === 'withdraw').length > 0 && (
             <div className="mt-md">
