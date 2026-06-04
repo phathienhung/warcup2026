@@ -35,6 +35,7 @@ export default async function handler(req, res) {
     const { action, amount, address } = req.body;
 
     if (action === 'withdraw') {
+      try {
         const todayStr = new Date().toISOString().split('T')[0];
         const { data: result, error: rpcError } = await supabase.rpc('request_withdrawal', {
           p_user_id: user.id,
