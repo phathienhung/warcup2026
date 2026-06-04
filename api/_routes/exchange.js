@@ -11,39 +11,27 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const { data: config } = await supabase.from('game_config').select('exchange_rate_votes, exchange_rate_ton, exchange_ads_required').eq('id', 1).single();
-      const { data: dbUser } = await supabase.from('users').select('available_votes, ads_watched, ton_balance').eq('telegram_id', user.id).single();
       
-      if (!config || !dbUser) return res.status(400).json({ error: 'Missing configuration or user' });
-      
-      const requiredAds = config.exchange_ads_required || 10;
-      const requiredVotes = config.exchange_rate_votes || 120000;
-      const tonReward = config.exchange_rate_ton || 0.1;
+      if (!config) return res.status(400).json({ error: 'Missing configuration' });
 
-      if ((dbUser.ads_watched || 0) < requiredAds) {
-        return res.status(400).json({ error: `You must watch at least ${requiredAds} ads to exchange.` });
+      const { data: result, error: rpcError } = await supabase.rpc('exchange_votes_for_ton', {
+        p_user_id: user.id,
+        p_votes_cost: config.exchange_rate_votes,
+        p_ton_reward: config.exchange_rate_ton,
+        p_ads_required: config.exchange_ads_required
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
       }
-      
-      if ((dbUser.available_votes || 0) < requiredVotes) {
-        return res.status(400).json({ error: `Not enough votes. You need ${requiredVotes} votes.` });
-      }
-      
-      const newVotes = Number(dbUser.available_votes) - Number(requiredVotes);
-      const newAds = Number(dbUser.ads_watched) - Number(requiredAds);
-      const newTon = Number(dbUser.ton_balance || 0) + Number(tonReward);
-      
-      const { error } = await supabase.from('users').update({
-        available_votes: newVotes,
-        ads_watched: newAds,
-        ton_balance: newTon
-      }).eq('telegram_id', user.id);
-      
-      if (error) throw error;
-      
+
       return res.status(200).json({ 
         success: true, 
-        tonBalance: newTon, 
-        availableVotes: newVotes, 
-        adsWatched: newAds 
+        tonBalance: result.new_balance, 
+        availableVotes: result.new_votes, 
+        adsWatched: 0 
       });
     } catch (err) {
       console.error('Exchange error:', err);
