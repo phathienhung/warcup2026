@@ -13,7 +13,7 @@ import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
 import api from '../lib/api';
 
 export default function HomePage() {
-  const { totalVotes, availableVotes, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, nationMultiplier, tap } = useGameStore();
+  const { totalVotes, availableVotes, tonBalance, energy, maxEnergy, miningSpeed, miningSpeedBase, miningSpeedMultiply, nationMultiplier, tap } = useGameStore();
   const { boostExpiresAt, boostMultiplier } = useUserStore();
   const [particles, setParticles] = useState([]);
   const [boostRemainingStr, setBoostRemainingStr] = useState('');
@@ -172,6 +172,14 @@ export default function HomePage() {
         >🎡</button>
       </div>
 
+      {/* Right Sidebar */}
+      <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 10 }}>
+        <button 
+          onClick={() => setActiveModal('exchange')}
+          style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--glass-bg)', border: '1px solid var(--neon-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: 'var(--glow-blue)' }}
+        >💱</button>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '16px 0', zIndex: 5 }}>
         <MiningSpeed speed={miningSpeed} base={miningSpeedBase} multiply={miningSpeedMultiply} nationMultiplier={nationMultiplier} />
         {boostRemainingStr && (
@@ -182,7 +190,14 @@ export default function HomePage() {
       </div>
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px', zIndex: 5 }}>
-        <VoteCounter value={availableVotes} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <VoteCounter value={availableVotes} />
+          {tonBalance > 0 && (
+            <div style={{ fontSize: '1.2rem', color: 'var(--neon-blue)', fontWeight: 'bold', textShadow: 'var(--glow-blue)' }}>
+              💎 {tonBalance.toFixed(2)} TON
+            </div>
+          )}
+        </div>
         <TapBall onTap={handleTap} />
       </div>
 
@@ -198,6 +213,10 @@ export default function HomePage() {
 
       <Modal isOpen={activeModal === 'spin'} onClose={() => setActiveModal(null)} title="Lucky Spin">
         <SpinModalContent />
+      </Modal>
+
+      <Modal isOpen={activeModal === 'exchange'} onClose={() => setActiveModal(null)} title="Exchange to TON">
+        <ExchangeModalContent />
       </Modal>
 
       <Modal isOpen={activeModal === 'claim'} onClose={() => !claiming && setActiveModal(null)} title="🎉 Congratulations! 🎉">
@@ -495,6 +514,115 @@ function SpinModalContent() {
         style={{ opacity: (spinning || (!spinInfo.daily_free_spin_available && spinInfo.tickets <= 0)) ? 0.5 : 1 }}
       >
         {spinning ? 'SPINNING...' : 'SPIN NOW'}
+      </button>
+    </div>
+  );
+}
+
+// ── Exchange Modal ──────────────────────────────────
+function ExchangeModalContent() {
+  const { availableVotes, tonBalance, adsWatched, exchangeRateVotes, exchangeRateTon, exchangeAdsRequired } = useGameStore();
+  const [loading, setLoading] = useState(false);
+
+  const handleWatchAd = async () => {
+    if (loading) return;
+    if (window.Adsgram) {
+      const AdController = window.Adsgram.init({ blockId: "33999" });
+      try {
+        setLoading(true);
+        await AdController.show();
+        // Ad finished
+        const res = await api.watchAd();
+        if (res.success) {
+          useGameStore.setState({ adsWatched: res.adsWatched });
+          telegram.haptic.notification('success');
+        }
+      } catch (err) {
+        console.error('Ad error:', err);
+        if (err?.error === 'skip' || err?.done === false) {
+          alert('Please watch the ad to the end.');
+        } else {
+          alert('No ads available right now. Try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      alert("Adsgram is not initialized.");
+    }
+  };
+
+  const handleExchange = async () => {
+    if (loading) return;
+    if (adsWatched < exchangeAdsRequired) return;
+    if (availableVotes < exchangeRateVotes) {
+      alert("Not enough votes.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.exchange();
+      if (res.success) {
+        useGameStore.setState({ 
+          availableVotes: res.availableVotes,
+          adsWatched: res.adsWatched,
+          tonBalance: res.tonBalance
+        });
+        telegram.haptic.notification('success');
+        alert(`Successfully exchanged! You received ${exchangeRateTon} TON.`);
+      }
+    } catch (err) {
+      alert(err.message || "Exchange failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canExchange = adsWatched >= exchangeAdsRequired && availableVotes >= exchangeRateVotes;
+
+  return (
+    <div className="flex-col mt-md">
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '8px', color: 'var(--neon-blue)', fontWeight: 'bold' }}>💎 {tonBalance.toFixed(2)} TON</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          Exchange Rate: {formatNumberFull(exchangeRateVotes)} Votes = {exchangeRateTon} TON
+        </p>
+      </div>
+
+      <div className="card mb-lg" style={{ textAlign: 'center', padding: '16px' }}>
+        <h3 className="mb-sm">Ads Requirement</h3>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+          Watch {exchangeAdsRequired} ads to unlock the exchange button.
+        </p>
+        
+        <div style={{ background: 'rgba(255,255,255,0.1)', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+          <div style={{ 
+            height: '100%', 
+            background: 'var(--neon-blue)', 
+            width: `${Math.min(100, (adsWatched / exchangeAdsRequired) * 100)}%`,
+            transition: 'width 0.3s'
+          }} />
+        </div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '16px', color: adsWatched >= exchangeAdsRequired ? 'var(--neon-green)' : 'inherit' }}>
+          {adsWatched} / {exchangeAdsRequired} Ads Watched
+        </div>
+
+        <button 
+          className="btn btn-outline btn-full mb-sm" 
+          onClick={handleWatchAd}
+          disabled={loading || adsWatched >= exchangeAdsRequired}
+        >
+          {loading ? 'LOADING AD...' : (adsWatched >= exchangeAdsRequired ? 'REQUIREMENT MET' : '📺 WATCH AD')}
+        </button>
+      </div>
+
+      <button 
+        className={`btn btn-full btn-lg ${canExchange ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={handleExchange}
+        disabled={!canExchange || loading}
+        style={canExchange ? { background: 'var(--neon-blue)', color: '#fff', boxShadow: 'var(--glow-blue)' } : {}}
+      >
+        {loading ? 'EXCHANGING...' : 'EXCHANGE TO TON'}
       </button>
     </div>
   );

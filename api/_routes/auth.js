@@ -157,7 +157,9 @@ export default async function handler(req, res) {
         reward_multiplier: stats.rewardMultiplier,
         nation_multiplier: stats.nationMultiplier,
         friend_count: friendCount || 0,
-        nft_count: dbUser.nft_count || 0
+        nft_count: dbUser.nft_count || 0,
+        ads_watched: dbUser.ads_watched || 0,
+        ton_balance: dbUser.ton_balance || 0
       } 
     });
 

@@ -92,6 +92,15 @@ class ApiClient {
   async claimStreak() {
     return this.post('/tasks', { action: 'claim_streak' });
   }
+
+  async watchAd() {
+    return this.post('/ads', { action: 'watch' });
+  }
+
+  async exchange() {
+    return this.post('/exchange', {});
+  }
+
   async claimAchievement(achievementId) {
     return this.post('/tasks', { action: 'claim_achievement', taskId: achievementId });
   }

@@ -24,7 +24,10 @@ export default async function handler(req, res) {
         max_energy_base: 1000,
         base_mining_speed: 1,
         base_xp_req: 1000,
-        spin_segments_json: null
+        spin_segments_json: null,
+        exchange_rate_votes: 120000,
+        exchange_rate_ton: 0.1,
+        exchange_ads_required: 10
       };
       
       return res.status(200).json({ 
