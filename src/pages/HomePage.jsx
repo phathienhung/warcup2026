@@ -526,36 +526,46 @@ function ExchangeModalContent() {
 
   const handleWatchAd = async () => {
     if (loading) return;
-    if (window.Adsgram) {
-      const AdController = window.Adsgram.init({ blockId: "33999" });
+    if (!window.Adsgram) {
+      alert("Adsgram is not initialized.");
+      return;
+    }
+
+    setLoading(true);
+    const AdController = window.Adsgram.init({ blockId: "33999" });
+    
+    let adWatched = false;
+    try {
+      await AdController.show();
+      adWatched = true;
+    } catch (err) {
+      console.error('Adsgram error:', err);
+      if (err?.error === 'skip' || err?.done === false) {
+        alert('Please watch the ad to the end.');
+        setLoading(false);
+        return;
+      } else {
+        // No ad inventory or adblocker
+        adWatched = true;
+        alert('No video ad available right now, but we counted it anyway!');
+      }
+    }
+
+    if (adWatched) {
       try {
-        setLoading(true);
-        await AdController.show();
-        // Ad finished
         const res = await api.watchAd();
         if (res.success) {
           useGameStore.setState({ adsWatched: res.adsWatched });
           telegram.haptic.notification('success');
+          alert(`✅ Ad counted! You have watched ${res.adsWatched} / ${exchangeAdsRequired} ads.`);
         }
-      } catch (err) {
-        console.error('Ad error:', err);
-        if (err?.error === 'skip' || err?.done === false) {
-          alert('Please watch the ad to the end.');
-        } else {
-          // No ads available or ad blocker, let's just count it for the user
-          const res = await api.watchAd();
-          if (res.success) {
-            useGameStore.setState({ adsWatched: res.adsWatched });
-            telegram.haptic.notification('success');
-            alert('No ads available right now, but we counted it anyway!');
-          }
-        }
-      } finally {
-        setLoading(false);
+      } catch (apiErr) {
+        console.error('API Error:', apiErr);
+        alert('Failed to save ad progress to server.');
       }
-    } else {
-      alert("Adsgram is not initialized.");
     }
+    
+    setLoading(false);
   };
 
   const handleExchange = async () => {
