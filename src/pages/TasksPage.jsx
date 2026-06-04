@@ -153,13 +153,34 @@ export default function TasksPage() {
         }
       } else if (task.status === 'verified') {
         // Step 3: Claim reward
-        const res = await api.claimTask(task.id);
-        if (res.success) {
-          telegram.haptic.notification('success');
-          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'claimed' } : t));
-          // Refresh user stats instantly
-          await refreshUserStats();
-          alert(`Task Claimed! +${res.rewardValue} ${res.rewardType}`);
+        
+        // Show Ad before claiming
+        let canClaim = true;
+        if (window.Adsgram) {
+          const AdController = window.Adsgram.init({ blockId: "33999" });
+          try {
+            await AdController.show();
+          } catch (err) {
+            console.error('Ad skipped or error:', err);
+            if (err?.error === 'skip' || err?.done === false) {
+              alert('Please watch the ad to the end to claim your reward!');
+              canClaim = false;
+            } else {
+              // Ad blocker or no ad available, let them claim anyway
+              canClaim = true;
+            }
+          }
+        }
+
+        if (canClaim) {
+          const res = await api.claimTask(task.id);
+          if (res.success) {
+            telegram.haptic.notification('success');
+            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'claimed' } : t));
+            // Refresh user stats instantly
+            await refreshUserStats();
+            alert(`Task Claimed! +${res.rewardValue} ${res.rewardType}`);
+          }
         }
       }
     } catch (e) {
