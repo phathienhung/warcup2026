@@ -50,27 +50,18 @@ export default async function handler(req, res) {
         const rewardType = milestone.reward_type;
         const rewardValue = Number(milestone.reward);
         
-        const updates = {
-          claimed_friend_milestones: [...claimed, milestoneCount]
-        };
+        const { data: result, error: rpcError } = await supabase.rpc('claim_friend_milestone', {
+          p_user_id: user.id,
+          p_milestone_count: milestoneCount,
+          p_reward_type: rewardType,
+          p_reward_value: rewardValue
+        });
         
-        if (rewardType === 'votes') {
-          updates.total_votes = Number(dbUser.total_votes || 0) + rewardValue;
-          updates.available_votes = Number(dbUser.available_votes || 0) + rewardValue;
-        } else if (rewardType === 'ton') {
-          updates.ton_balance = Number(dbUser.ton_balance || 0) + rewardValue;
-        } else if (rewardType === 'energy') {
-          updates.energy = Math.min(Number(dbUser.energy || 0) + rewardValue, Number(dbUser.max_energy || 1000));
-        } else if (rewardType === 'speed') {
-          updates.mining_speed_bonus = Number(dbUser.mining_speed_bonus || 0) + rewardValue;
-        } else if (rewardType === 'regen') {
-          updates.energy_regen_bonus = Number(dbUser.energy_regen_bonus || 0) + rewardValue;
-        } else if (rewardType === 'max_energy') {
-          updates.max_energy = Number(dbUser.max_energy || 1000) + rewardValue;
-          updates.energy = Number(dbUser.energy || 0) + rewardValue; // Heal user when max energy increases
+        if (rpcError) throw rpcError;
+        
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
         }
-        
-        await supabase.from('users').update(updates).eq('telegram_id', user.id);
         
         return res.status(200).json({ success: true, rewardType, rewardValue });
       } catch (err) {
