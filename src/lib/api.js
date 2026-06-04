@@ -101,6 +101,10 @@ class ApiClient {
     return this.post('/exchange', {});
   }
 
+  async claimFriendMilestone(milestoneCount) {
+    return this.post('/referral', { action: 'claim_milestone', milestoneCount });
+  }
+
   async claimAchievement(achievementId) {
     return this.post('/tasks', { action: 'claim_achievement', taskId: achievementId });
   }

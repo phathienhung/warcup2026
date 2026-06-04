@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import useUserStore from '../store/userStore';
+import useGameStore from '../store/gameStore';
 import telegram from '../lib/telegram';
 import api from '../lib/api';
-import { formatNumber } from '../data/constants';
+import { formatNumber, formatNumberFull } from '../data/constants';
 
 export default function FriendsPage() {
   const { referralCode, friendCount, telegramId } = useUserStore();
+  const { referralSystem, claimedFriendMilestones } = useGameStore();
+  
   const [friendsList, setFriendsList] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     const loadFriends = async () => {
@@ -22,7 +26,9 @@ export default function FriendsPage() {
     };
     loadFriends();
   }, []);
-  const inviteLink = `https://t.me/warcup2026_bot/app?startapp=${referralCode || ''}`;
+
+  const botLink = referralSystem?.bot_link || "https://t.me/warcup2026_bot/app";
+  const inviteLink = `${botLink}?startapp=${referralCode || ''}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -31,22 +37,48 @@ export default function FriendsPage() {
   };
 
   const handleInvite = () => {
-    const text = `Join World Cup Mining War 2026 and get a 5,000 vote bonus! ⚽🏆`;
+    const text = `Join World Cup Mining War 2026 and win big! ⚽🏆`;
     telegram.shareUrl(inviteLink, text);
   };
+
+  const handleClaimMilestone = async (count) => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const res = await api.claimFriendMilestone(count);
+      if (res.success) {
+        telegram.haptic.notification('success');
+        // Refresh stats
+        const data = await api.auth();
+        if (data?.user) {
+          useGameStore.getState().setGameState(data.user);
+        }
+        alert(`🎉 Milestone Claimed! You got +${formatNumberFull(res.rewardValue)} ${res.rewardType.toUpperCase()}`);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to claim milestone');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const f1 = referralSystem?.f1_percent || 10;
+  const f2 = referralSystem?.f2_percent || 5;
+  const f3 = referralSystem?.f3_percent || 2;
+  const milestones = referralSystem?.milestones || [];
 
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Invite Friends</h1>
-        <div className="page-subtitle">Earn +1 Mining Speed per friend</div>
+        <div className="page-subtitle">Earn commissions & milestone rewards!</div>
       </div>
 
       <div className="card mb-lg text-center">
         <div style={{ fontSize: '3rem', margin: '16px 0' }}>🤝</div>
-        <h3 style={{ marginBottom: '8px' }}>Invite & Earn Together</h3>
+        <h3 style={{ marginBottom: '8px' }}>Multi-Tier Referral System</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-          For every friend who joins using your link, you both receive 5,000 votes and you permanently get +1 to your mining speed!
+          Earn <strong style={{color:'var(--neon-green)'}}>{f1}%</strong> of F1 votes, <strong style={{color:'var(--gold)'}}>{f2}%</strong> of F2 votes, and <strong style={{color:'var(--neon-blue)'}}>{f3}%</strong> of F3 votes! Plus milestone bonuses below!
         </p>
         
         <div className="referral-code-box mb-md">
@@ -59,6 +91,53 @@ export default function FriendsPage() {
         </button>
       </div>
 
+      {milestones.length > 0 && (
+        <>
+          <h3 className="section-title">Milestone Rewards</h3>
+          <div className="flex-col gap-sm mb-lg">
+            {milestones.map((m, i) => {
+              const isClaimed = (claimedFriendMilestones || []).includes(m.count);
+              const isReady = !isClaimed && friendCount >= m.count;
+              
+              let rewardIcon = '⭐';
+              if (m.reward_type === 'votes') rewardIcon = '💎';
+              else if (m.reward_type === 'ton') rewardIcon = '🔹';
+              else if (m.reward_type === 'energy') rewardIcon = '⚡';
+              else if (m.reward_type === 'speed') rewardIcon = '⛏️';
+              else if (m.reward_type === 'regen') rewardIcon = '🔄';
+              else if (m.reward_type === 'max_energy') rewardIcon = '🔋';
+
+              return (
+                <div key={i} className={`card flex-between ${isReady ? 'card-gold' : ''}`} style={{ padding: '12px', opacity: isClaimed ? 0.6 : 1 }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>Invite {m.count} Friends</div>
+                    <div style={{ fontSize: '0.8rem', color: isReady ? 'var(--gold)' : 'var(--text-secondary)' }}>
+                      Reward: +{formatNumberFull(m.reward)} {m.reward_type.toUpperCase()} {rewardIcon}
+                    </div>
+                  </div>
+                  
+                  {isClaimed ? (
+                    <div className="badge" style={{ background: '#333' }}>Claimed</div>
+                  ) : isReady ? (
+                    <button 
+                      className="btn btn-primary btn-sm" 
+                      onClick={() => handleClaimMilestone(m.count)}
+                      disabled={claiming}
+                    >
+                      {claiming ? '...' : 'CLAIM'}
+                    </button>
+                  ) : (
+                    <div className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                      {friendCount} / {m.count}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <h3 className="section-title">My Referrals ({friendCount || 0})</h3>
       
       {loadingFriends ? (
@@ -66,16 +145,10 @@ export default function FriendsPage() {
       ) : friendsList.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">👥</div>
-          <div className="empty-state-text">You haven't invited anyone yet. Invite friends to boost your mining power!</div>
+          <div className="empty-state-text">You haven't invited anyone yet. Invite friends to unlock milestones!</div>
         </div>
       ) : (
-        <div className="flex-col gap-sm">
-          <div className="card mb-sm">
-            <div className="flex-between">
-              <span>Total Bonus Earned:</span>
-              <span style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>+{friendCount} Speed</span>
-            </div>
-          </div>
+        <div className="flex-col gap-sm pb-xl">
           {friendsList.map((f, i) => (
             <div key={f.referred_id || i} className="card flex-between" style={{ padding: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

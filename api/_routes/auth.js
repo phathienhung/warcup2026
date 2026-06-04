@@ -159,7 +159,8 @@ export default async function handler(req, res) {
         friend_count: friendCount || 0,
         nft_count: dbUser.nft_count || 0,
         ads_watched: dbUser.ads_watched || 0,
-        ton_balance: dbUser.ton_balance || 0
+        ton_balance: dbUser.ton_balance || 0,
+        claimed_friend_milestones: dbUser.claimed_friend_milestones || []
       } 
     });
 

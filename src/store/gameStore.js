@@ -29,6 +29,7 @@ export const useGameStore = create((set, get) => ({
   // ── Config State ──────────────────────────────────
   nations: [],
   configLoaded: false,
+  referralSystem: null,
   energyRegenRateMs: 1000,
   energyRegenAmount: 1,
   energyRegenInterval: null,
@@ -53,6 +54,7 @@ export const useGameStore = create((set, get) => ({
         exchangeRateVotes: config?.exchange_rate_votes || 120000,
         exchangeRateTon: config?.exchange_rate_ton || 0.1,
         exchangeAdsRequired: config?.exchange_ads_required || 10,
+        referralSystem: config?.referral_system_json || null,
         shopItems: shop_items || [],
         nftTemplates: nft_templates || [],
         dailyTasks: daily_tasks || [],
@@ -167,6 +169,7 @@ export const useGameStore = create((set, get) => ({
       availableVotes: data.available_votes ?? 0,
       tonBalance: data.ton_balance ?? 0,
       adsWatched: data.ads_watched ?? 0,
+      claimedFriendMilestones: data.claimed_friend_milestones || [],
       miningSpeed: data.mining_speed ?? 1,
       miningSpeedBase: data.mining_speed_base ?? 1,
       miningSpeedMultiply: data.mining_speed_multiply ?? 0,

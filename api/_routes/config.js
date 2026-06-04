@@ -27,7 +27,8 @@ export default async function handler(req, res) {
         spin_segments_json: null,
         exchange_rate_votes: 120000,
         exchange_rate_ton: 0.1,
-        exchange_ads_required: 10
+        exchange_ads_required: 10,
+        referral_system_json: config?.referral_system_json || null
       };
       
       return res.status(200).json({ 
