@@ -215,6 +215,16 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Already claimed' });
         }
 
+        // Fetch additional stats not stored directly on user table
+        const { count: friendCount } = await supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('referrer_id', user.id);
+        dbUser.friend_count = friendCount || 0;
+        
+        const { count: nftCount } = await supabase.from('user_nfts').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+        dbUser.nft_count = nftCount || 0;
+
+        const { count: predictionsWon } = await supabase.from('predictions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_correct', true);
+        dbUser.predictions_won = predictionsWon || 0;
+
         // Validate condition
         let isValid = false;
         let rewardVotes = 0;
