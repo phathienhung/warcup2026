@@ -10,6 +10,7 @@ import ShopPage from './pages/ShopPage';
 import ProfilePage from './pages/ProfilePage';
 import PredictionPage from './pages/PredictionPage';
 import WalletPage from './pages/WalletPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function LoadingScreen() {
   return (
@@ -125,14 +126,17 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/prediction" element={<PredictionPage />} />
-        <Route path="/shop" element={<ShopPage />} />
-        <Route path="/wallet" element={<WalletPage />} />
-        <Route path="/tasks" element={<TasksPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/prediction" element={<PredictionPage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<HomePage />} />
+        </Routes>
+      </ErrorBoundary>
       <NavBar />
     </div>
   );
