@@ -134,7 +134,8 @@ export default async function handler(req, res) {
           const tgData = await tgRes.json();
           
           if (!tgData.ok) {
-            return res.status(400).json({ error: 'Verification failed. Make sure the bot is an admin of the channel/group.' });
+            console.error('Telegram API Error:', tgData);
+            return res.status(400).json({ error: `Verification failed for chat ${channelId}. Telegram says: ${tgData.description || 'Unknown error'}` });
           }
           
           const memberStatus = tgData.result.status;
