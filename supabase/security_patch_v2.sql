@@ -116,7 +116,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- 3. DEPOSIT TON RPC
-CREATE OR REPLACE FUNCTION deposit_ton(p_user_id BIGINT, p_tx_hash TEXT, p_amount FLOAT)
+CREATE OR REPLACE FUNCTION deposit_ton(p_user_id BIGINT, p_tx_hash TEXT, p_amount FLOAT, p_wallet_address TEXT)
 RETURNS JSON AS $$
 DECLARE
     v_exists BOOLEAN;
@@ -128,8 +128,8 @@ BEGIN
     END IF;
 
     -- Insert transaction
-    INSERT INTO wallet_transactions (user_id, tx_type, amount_ton, tx_hash, status)
-    VALUES (p_user_id, 'deposit', p_amount, p_tx_hash, 'completed');
+    INSERT INTO wallet_transactions (user_id, tx_type, amount_ton, tx_hash, status, wallet_address)
+    VALUES (p_user_id, 'deposit', p_amount, p_tx_hash, 'completed', p_wallet_address);
 
     -- Credit user
     UPDATE users SET ton_balance = COALESCE(ton_balance, 0) + p_amount, ton_deposited = COALESCE(ton_deposited, 0) + p_amount WHERE telegram_id = p_user_id;

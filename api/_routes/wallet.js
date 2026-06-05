@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         if (bot && adminChatId) {
           const { data: dbUser } = await supabase.from('users').select('username').eq('telegram_id', user.id).single();
           const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
-          const text = `📤 <b>WITHDRAW REQUEST</b>\nUser: ${usernameStr}\nAmount: <b>${amount} TON</b>\nWallet: <code>${address}</code>`;
+          const text = `📤 *WITHDRAW REQUEST*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
           
           const nanoTon = Math.floor(amount * 1e9);
           const keyboard = new InlineKeyboard()
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
             .text('✅ Confirm Transfer', `withdraw_${result.transaction_id}`).row()
             .text('❌ Reject & Refund', `reject_${result.transaction_id}`);
             
-          await bot.api.sendMessage(adminChatId, text, { parse_mode: 'HTML', reply_markup: keyboard });
+          await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown', reply_markup: keyboard });
         }
 
         return res.status(200).json({ success: true, newBalance: result.newBalance });
@@ -84,7 +84,8 @@ export default async function handler(req, res) {
         const { data: result, error: rpcError } = await supabase.rpc('deposit_ton', {
           p_user_id: user.id,
           p_tx_hash: tx_hash,
-          p_amount: amount
+          p_amount: amount,
+          p_wallet_address: address
         });
 
         if (rpcError) throw rpcError;
@@ -99,13 +100,13 @@ export default async function handler(req, res) {
           const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
           
           if (adminChatId) {
-             const text = `📥 <b>NEW DEPOSIT</b>\nUser: ${usernameStr}\nAmount: <b>${amount} TON</b>\nWallet: <code>${address}</code>\nHash: <code>${tx_hash.substring(0, 16)}...</code>`;
-             await bot.api.sendMessage(adminChatId, text, { parse_mode: 'HTML' });
+             const text = `📥 *NEW DEPOSIT*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\`\nHash: \`${tx_hash.substring(0, 16)}...\``;
+             await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
           }
           
           if (publicChannelId) {
-             const textPub = `🚀 ${usernameStr} just successfully deposited <b>${amount} TON</b> to hunt for World Cup tickets! 🏆`;
-             await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'HTML' });
+             const textPub = `🚀 ${usernameStr} just successfully deposited *${amount} TON* to hunt for World Cup tickets! 🏆`;
+             await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'Markdown' });
           }
         }
 
