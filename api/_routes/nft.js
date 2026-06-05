@@ -36,43 +36,18 @@ export default async function handler(req, res) {
         const { data: nft } = await supabase.from('nft_templates').select('*').eq('id', nftId).single();
         if (!nft) return res.status(404).json({ error: 'NFT not found' });
         
-        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
-        if (!dbUser) return res.status(404).json({ error: 'User not found' });
-
-        // Simulate Ton transaction success (same as shop.js)
-        // Add to user_nfts
-        const { data: newNft, error: insertError } = await supabase.from('user_nfts').insert({
-          user_id: user.id,
-          nft_template_id: nft.id,
-          mint_number: (nft.minted_count || 0) + 1,
-          equipped: false
-        }).select().single();
-        
-        if (insertError) throw insertError;
-
-        // Update nft template minted count
-        await supabase.from('nft_templates').update({ minted_count: (nft.minted_count || 0) + 1 }).eq('id', nft.id);
-        
-        // Update user ton_balance
-        const updates = {};
-        const totalCost = Number(nft.price_votes) || 1.5;
-        const currentTon = Number(dbUser.ton_balance) || 0;
-        if (currentTon >= totalCost || currentTon > 0) {
-          updates.ton_balance = Math.max(0, currentTon - totalCost);
-        }
-        const { error: userUpdateError } = await supabase.from('users').update(updates).eq('telegram_id', user.id);
-        if (userUpdateError) throw userUpdateError;
-        
-        // Log purchase in shop_purchases
-        await supabase.from('shop_purchases').insert({
-          user_id: user.id,
-          item_type: 'nft',
-          item_id: nft.id,
-          quantity: 1,
-          price_paid: nft.price_votes, // or price_ton if added
-          price_type: 'ton'
+        const { data: result, error: rpcError } = await supabase.rpc('buy_nft', {
+          p_user_id: user.id,
+          p_template_id: nft.id,
+          p_price: nft.price_votes
         });
 
+        if (rpcError) throw rpcError;
+
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
+        }
+        
         return res.status(200).json({ success: true, message: `Successfully purchased ${nft.player_name}` });
       } catch (e) {
         console.error('NFT purchase error:', e);

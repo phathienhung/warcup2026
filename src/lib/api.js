@@ -144,8 +144,8 @@ class ApiClient {
     return this.get('/shop?action=history');
   }
 
-  buyItem(itemId, quantity = 1) {
-    return this.post('/shop', { action: 'buy', itemId, quantity });
+  buyItem(itemId, quantity = 1, tx_hash = null) {
+    return this.post('/shop', { action: 'buy', itemId, quantity, tx_hash });
   }
 
   // ── NFT ───────────────────────────────────────────
@@ -153,8 +153,8 @@ class ApiClient {
     return this.get(`/nft?action=list&rarity=${rarity}`);
   }
 
-  buyNFT(nftId) {
-    return this.post('/nft', { action: 'buy', nftId });
+  buyNFT(nftId, tx_hash = null) {
+    return this.post('/nft', { action: 'buy', nftId, tx_hash });
   }
 
   getMyNFTs() {
@@ -204,8 +204,8 @@ class ApiClient {
     return this.post('/wallet', { action: 'withdraw', amount, address });
   }
 
-  depositWallet(amount, address) {
-    return this.post('/wallet', { action: 'deposit', amount, address });
+  depositWallet(amount, address, tx_hash) {
+    return this.post('/wallet', { action: 'deposit', amount, address, tx_hash });
   }
 
   // ── Spin ──────────────────────────────────────────

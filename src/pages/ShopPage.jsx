@@ -94,11 +94,13 @@ export default function ShopPage() {
     setBuying(true);
     
     try {
+    try {
       if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
         const requiredTon = Number(selectedItem.price);
         const currentTon = tonBalance || 0;
         const missingTon = requiredTon - currentTon;
 
+        let tx_hash = null;
         if (missingTon > 0) {
           const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 60,
@@ -109,14 +111,15 @@ export default function ShopPage() {
               }
             ]
           };
-          await tonConnectUI.sendTransaction(transaction);
+          const txResult = await tonConnectUI.sendTransaction(transaction);
+          tx_hash = txResult.boc;
         }
         
         let res;
         if (selectedItem.type === 'nft') {
-          res = await api.buyNFT(selectedItem.id);
+          res = await api.buyNFT(selectedItem.id, tx_hash);
         } else {
-          res = await api.buyItem(selectedItem.id, 1);
+          res = await api.buyItem(selectedItem.id, 1, tx_hash);
         }
         
         if (res.success) {

@@ -10,7 +10,6 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    // Get mining info
     const { data } = await supabase.from('users').select('total_votes, energy, max_energy').eq('telegram_id', user.id).single();
     return res.status(200).json(data);
   }
@@ -22,7 +21,6 @@ export default async function handler(req, res) {
     }
 
     try {
-      // 1. Get current user stats
       const { data: dbUser } = await supabase
         .from('users')
         .select('energy, max_energy, total_votes, available_votes, total_taps, xp, level, login_streak, mining_speed_bonus, energy_regen_bonus, last_login, boost_multiplier, boost_expires_at, favorite_nation')
@@ -31,13 +29,11 @@ export default async function handler(req, res) {
 
       if (!dbUser) return res.status(404).json({ error: 'User not found' });
 
-      // Get friend count for speed calc
       const { count: friendCount } = await supabase
         .from('referrals')
         .select('*', { count: 'exact', head: true })
         .eq('referrer_id', user.id);
 
-      // Get NFT multiplier
       const { data: userNfts } = await supabase
         .from('user_nfts')
         .select('nft_templates(vote_multiplier)')
@@ -64,7 +60,6 @@ export default async function handler(req, res) {
       const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
       const speed = stats.speed.final;
       
-      // Calculate background energy regen since last interaction
       const now = new Date();
       const lastInteraction = new Date(dbUser.last_login || now);
       const diffMs = now - lastInteraction;
@@ -78,13 +73,11 @@ export default async function handler(req, res) {
       let validCount = count;
       let energyCost = validCount * speed;
       if (currentRegennedEnergy < energyCost) {
-        // Graceful clamping instead of 400 error to prevent client desync deadlocks
         validCount = Math.floor(currentRegennedEnergy / speed);
         energyCost = validCount * speed;
       }
       
       if (validCount <= 0 && count > 0) {
-        // If they can't even afford 1 tap, return success but 0 votes so client sync clears pendingTaps
         return res.status(200).json({
           success: true,
           stats: {
@@ -101,14 +94,22 @@ export default async function handler(req, res) {
         });
       }
 
-      const votesGained = validCount * speed;
-      const xpGained = validCount; // 1 tap = 1 XP
-      
-      const newEnergy = Math.max(0, currentRegennedEnergy - energyCost);
-      const newTotalVotes = Number(dbUser.total_votes) + votesGained;
-      const newAvailableVotes = Number(dbUser.available_votes) + votesGained;
-      const newTotalTaps = Number(dbUser.total_taps) + count;
-      const newXp = Number(dbUser.xp) + xpGained;
+      // Update DB atomically
+      const { data: rpcData, error } = await supabase.rpc('process_tap', {
+        p_user_id: user.id,
+        p_taps: count,
+        p_speed: speed
+      });
+
+      if (error) throw error;
+      if (!rpcData.success) {
+        return res.status(400).json({ error: rpcData.error || 'Failed to process tap' });
+      }
+
+      const newEnergy = rpcData.new_energy;
+      const newTotalVotes = rpcData.new_total_votes;
+      const newAvailableVotes = rpcData.new_available_votes;
+      const newXp = rpcData.new_xp;
       
       const newLevel = computeLevelFromXp(newXp);
       const levelUpUpdates = {};
@@ -126,24 +127,9 @@ export default async function handler(req, res) {
         } else if (rewardType === 'max_energy') {
           levelUpUpdates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
         }
+        
+        await supabase.from('users').update({ level: newLevel, ...levelUpUpdates }).eq('telegram_id', user.id);
       }
-
-      // 3. Update DB
-      const { error } = await supabase
-        .from('users')
-        .update({
-          energy: newEnergy,
-          total_votes: newTotalVotes,
-          available_votes: newAvailableVotes,
-          total_taps: newTotalTaps,
-          xp: newXp,
-          level: newLevel,
-          last_login: now.toISOString(), // Update last_login so next regen is calculated from now
-          ...levelUpUpdates
-        })
-        .eq('telegram_id', user.id);
-
-      if (error) throw error;
 
       res.status(200).json({
         success: true,

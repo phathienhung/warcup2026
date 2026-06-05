@@ -48,73 +48,44 @@ export default async function handler(req, res) {
       const { matchId, team, votesStaked } = req.body;
       
       try {
-        // 1. Get user votes
-        const { data: dbUser } = await supabase.from('users').select('available_votes').eq('telegram_id', user.id).single();
-        if (!dbUser || Number(dbUser.available_votes) < votesStaked) {
-          return res.status(400).json({ error: 'Not enough available votes' });
+      try {
+        if (!votesStaked || typeof votesStaked !== 'number' || votesStaked <= 0) {
+          return res.status(400).json({ error: 'Invalid stake amount' });
         }
 
-        // 2. Get Match
-        const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single();
-        if (!match) return res.status(404).json({ error: 'Match not found' });
-        if (new Date(match.match_date).getTime() < Date.now()) {
-          return res.status(400).json({ error: 'Match has already started' });
-        }
-        
-        // 3. Deduct votes
-        await supabase.from('users').update({ available_votes: Number(dbUser.available_votes) - votesStaked }).eq('telegram_id', user.id);
-        
-        // 4. Upsert Prediction
-        const { data: existingPred } = await supabase.from('predictions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('match_id', matchId)
-          .eq('predicted_team', team)
-          .maybeSingle();
-
-        let isNewOutcomeForUser = false;
-      if (existingPred) {
-        // Accumulate
-        await supabase.from('predictions')
-          .update({ votes_staked: Number(existingPred.votes_staked) + votesStaked })
-          .eq('id', existingPred.id);
-      } else {
-        isNewOutcomeForUser = true;
-        // Insert new
-        const { error } = await supabase.from('predictions').insert({
-          user_id: user.id,
-          match_id: matchId,
-          predicted_team: team,
-          votes_staked: votesStaked
+        // 1. Atomic deduction and insertion via RPC
+        const { data: rpcData, error } = await supabase.rpc('make_prediction', {
+          p_user_id: user.id,
+          p_match_id: matchId,
+          p_team: team,
+          p_votes: votesStaked
         });
-        if (error) return res.status(500).json({ error: error.message });
-      }
 
-      // 5. Update match JSONB stats
-      const outcomePools = match.outcome_pools || {};
-      const outcomeUsers = match.outcome_users || {};
-      
-      const newTotalPool = Number(match.total_pool || 0) + votesStaked;
-      outcomePools[team] = Number(outcomePools[team] || 0) + votesStaked;
-      
-      if (isNewOutcomeForUser) {
-        outcomeUsers[team] = Number(outcomeUsers[team] || 0) + 1;
-      }
-      
-      const updateData = {
-        total_pool: newTotalPool,
-        outcome_pools: outcomePools,
-        outcome_users: outcomeUsers
-      };
-      
-      // Keep legacy columns for backward compatibility if it's A/B/DRAW
-      if (team === 'A') updateData.total_votes_a = Number(match.total_votes_a || 0) + votesStaked;
-      if (team === 'B') updateData.total_votes_b = Number(match.total_votes_b || 0) + votesStaked;
-      if (team === 'DRAW') updateData.total_votes_draw = Number(match.total_votes_draw || 0) + votesStaked;
+        if (error) throw error;
+        if (!rpcData.success) {
+          return res.status(400).json({ error: rpcData.error || 'Failed to make prediction' });
+        }
 
-        await supabase.from('matches').update(updateData).eq('id', matchId);
+        // 2. Get Match to update JSONB stats (for UI display)
+        const { data: match } = await supabase.from('matches').select('*').eq('id', matchId).single();
+        if (match) {
+          const outcomePools = match.outcome_pools || {};
+          const outcomeUsers = match.outcome_users || {};
+          
+          const newTotalPool = Number(match.total_pool || 0) + votesStaked;
+          outcomePools[team] = Number(outcomePools[team] || 0) + votesStaked;
+          
+          // We don't perfectly track unique users here due to RPC, but we can approximate
+          outcomeUsers[team] = Number(outcomeUsers[team] || 0) + 1;
+          
+          await supabase.from('matches').update({
+            total_pool: newTotalPool,
+            outcome_pools: outcomePools,
+            outcome_users: outcomeUsers
+          }).eq('id', matchId);
+        }
 
-        return res.status(200).json({ success: true, newAvailableVotes: Number(dbUser.available_votes) - votesStaked });
+        return res.status(200).json({ success: true });
       } catch (err) {
         console.error('Prediction error:', err);
         return res.status(500).json({ error: 'Internal server error' });
