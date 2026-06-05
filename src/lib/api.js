@@ -204,8 +204,8 @@ class ApiClient {
     return this.post('/wallet', { action: 'withdraw', amount, address });
   }
 
-  depositWallet(amount, address, tx_hash) {
-    return this.post('/wallet', { action: 'deposit', amount, address, tx_hash });
+  depositWallet(amount, address) {
+    return this.post('/wallet', { action: 'deposit', amount, address });
   }
 
   // ── Spin ──────────────────────────────────────────

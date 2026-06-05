@@ -94,6 +94,7 @@ export default function ShopPage() {
     setBuying(true);
     
     try {
+    try {
       if (selectedItem.price_type === 'ton' || selectedItem.priceType === 'ton') {
         const requiredTon = Number(selectedItem.price);
         const currentTon = tonBalance || 0;

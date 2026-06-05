@@ -57,21 +57,9 @@ export default function WalletPage() {
     };
 
     try {
-      const txResult = await tonConnectUI.sendTransaction(transaction);
-      const tx_hash = txResult.boc;
-      const res = await api.depositWallet(Number(depositAmount), address, tx_hash);
-      
-      if (res.success) {
-        alert('Deposit transaction sent! It is pending confirmation.');
-        // Update local store so they don't have to reload
-        useGameStore.setState(state => ({
-          tonBalance: (state.tonBalance || 0) + Number(depositAmount),
-          tonDeposited: (state.tonDeposited || 0) + Number(depositAmount)
-        }));
-      } else {
-        alert('Deposit failed: ' + res.error);
-      }
-      
+      await tonConnectUI.sendTransaction(transaction);
+      await api.depositWallet(Number(depositAmount), address);
+      alert('Deposit transaction sent! It is pending confirmation.');
       setDepositAmount('');
       loadHistory();
     } catch (e) {

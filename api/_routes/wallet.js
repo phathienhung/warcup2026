@@ -76,31 +76,37 @@ export default async function handler(req, res) {
     if (action === 'deposit') {
       try {
         // Automatic Deposit Approval MVP
-        const { tx_hash } = req.body;
-        if (!tx_hash) {
-          return res.status(400).json({ error: 'Missing transaction hash' });
-        }
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('ton_balance, ton_deposited, username')
+          .eq('telegram_id', user.id)
+          .single();
+          
+        const newBalance = Number(dbUser?.ton_balance || 0) + amount;
+        const newDeposited = Number(dbUser?.ton_deposited || 0) + amount;
 
-        const { data: result, error: rpcError } = await supabase.rpc('deposit_ton', {
-          p_user_id: user.id,
-          p_tx_hash: tx_hash,
-          p_amount: amount,
-          p_wallet_address: address
-        });
+        // 1. Add balance & total deposited
+        await supabase.from('users').update({ ton_balance: newBalance, ton_deposited: newDeposited }).eq('telegram_id', user.id);
 
-        if (rpcError) throw rpcError;
-
-        if (!result.success) {
-          return res.status(400).json({ error: result.error });
-        }
+        // 2. Insert completed tx
+        const { data: tx, error: txError } = await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: user.id,
+            tx_type: 'deposit',
+            amount_ton: amount,
+            wallet_address: address,
+            status: 'completed'
+          })
+          .select()
+          .single();
 
         // 3. Notify Admin & Public
         if (bot) {
-          const { data: dbUser } = await supabase.from('users').select('username').eq('telegram_id', user.id).single();
           const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
           
           if (adminChatId) {
-             const text = `📥 *NEW DEPOSIT*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\`\nHash: \`${tx_hash.substring(0, 16)}...\``;
+             const text = `📥 *NEW DEPOSIT (AUTO)*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
              await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
           }
           

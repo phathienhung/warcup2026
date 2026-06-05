@@ -360,6 +360,10 @@ function SpinModalContent() {
     setSpinning(true);
     setWonPrize(null);
 
+    let target;
+    try {
+      const res = await api.spin('start_spin', null, segCount);
+      if (!res.success) throw new Error(res.error || 'Failed to start spin');
     telegram.haptic.impact('light');
 
     try {
