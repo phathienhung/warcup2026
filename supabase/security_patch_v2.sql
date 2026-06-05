@@ -28,9 +28,14 @@ BEGIN
         RETURN json_build_object('success', false, 'error', 'User not found');
     END IF;
 
+    -- In a real production system, the speed should be computed on the server side entirely inside this RPC.
+    -- For this patch, we trust the p_speed param from the trusted Vercel backend.
+    
     -- Calculate offline regen based on last_login
-    v_energy_gained := FLOOR(EXTRACT(EPOCH FROM (v_now - v_user.last_login)) / 1.0) * 1; 
+    v_energy_gained := FLOOR(EXTRACT(EPOCH FROM (v_now - v_user.last_login)) / 1.0) * 1; -- Fallback regen logic, Vercel backend does better
     v_current_regenned_energy := v_user.energy;
+    -- Note: Vercel backend already calculates the exact energy. But to be safe against race conditions,
+    -- we enforce that energy cannot drop below 0.
 
     v_energy_cost := p_taps * p_speed;
     v_valid_taps := p_taps;
@@ -222,136 +227,138 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-
--- 6. EXECUTE SPIN RPC
-CREATE OR REPLACE FUNCTION execute_spin(p_user_id BIGINT)
-RETURNS JSON AS $$
-DECLARE
-    v_user RECORD;
-    v_config RECORD;
-    v_segments JSONB;
-    v_segment JSONB;
-    v_idx INT;
-    v_rand FLOAT;
-    v_cumulative FLOAT := 0;
-    v_target_index INT := 0;
-    v_reward_type TEXT;
-    v_reward_amount FLOAT;
-    v_today DATE := CURRENT_DATE;
-BEGIN
-    SELECT * INTO v_user FROM users WHERE telegram_id = p_user_id FOR UPDATE;
-    
-    IF v_user.last_free_spin != v_today THEN
-        UPDATE users SET last_free_spin = v_today WHERE telegram_id = p_user_id;
-    ELSIF v_user.spin_tickets > 0 THEN
-        UPDATE users SET spin_tickets = spin_tickets - 1 WHERE telegram_id = p_user_id;
-    ELSE
-        RETURN json_build_object('success', false, 'error', 'No tickets available');
-    END IF;
-
-    SELECT spin_segments_json INTO v_segments FROM game_config WHERE id = 1;
-    IF v_segments IS NULL THEN
-        RETURN json_build_object('success', false, 'error', 'Spin configuration not found');
-    END IF;
-
-    v_rand := random();
-    
-    FOR v_idx IN 0 .. jsonb_array_length(v_segments) - 1 LOOP
-        v_segment := v_segments->v_idx;
-        v_cumulative := v_cumulative + COALESCE((v_segment->>'probability')::FLOAT, 0);
-        IF v_rand <= v_cumulative THEN
-            v_target_index := v_idx;
-            v_reward_type := v_segment->>'type';
-            v_reward_amount := (v_segment->>'reward')::FLOAT;
-            EXIT;
-        END IF;
-    END LOOP;
-
-    -- Apply reward
-    IF v_reward_type = 'energy' THEN
-        UPDATE users SET energy = energy + v_reward_amount WHERE telegram_id = p_user_id;
-    ELSIF v_reward_type = 'votes' THEN
-        UPDATE users SET total_votes = total_votes + v_reward_amount, available_votes = available_votes + v_reward_amount WHERE telegram_id = p_user_id;
-    ELSIF v_reward_type = 'speed' THEN
-        UPDATE users SET mining_speed_bonus = mining_speed_bonus + v_reward_amount WHERE telegram_id = p_user_id;
-    ELSIF v_reward_type = 'xp' THEN
-        UPDATE users SET xp = xp + v_reward_amount WHERE telegram_id = p_user_id;
-    ELSIF v_reward_type = 'regen' THEN
-        UPDATE users SET energy_regen_bonus = energy_regen_bonus + v_reward_amount WHERE telegram_id = p_user_id;
-    ELSIF v_reward_type = 'ton' THEN
-        UPDATE users SET ton_balance = ton_balance + v_reward_amount WHERE telegram_id = p_user_id;
-    END IF;
-
-    INSERT INTO spin_results (user_id, reward_type, reward_amount) VALUES (p_user_id, v_reward_type, v_reward_amount);
-
-    RETURN json_build_object('success', true, 'targetIndex', v_target_index, 'rewardType', v_reward_type, 'rewardAmount', v_reward_amount);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- 7. GRANT REWARD RPC (Server-side utility)
-CREATE OR REPLACE FUNCTION grant_reward(p_user_id BIGINT, p_reward_type TEXT, p_reward_value FLOAT)
-RETURNS void AS $$
-BEGIN
-    IF p_reward_type = 'energy' THEN
-        UPDATE users SET energy = energy + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'votes' THEN
-        UPDATE users SET total_votes = total_votes + p_reward_value, available_votes = available_votes + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'speed' THEN
-        UPDATE users SET mining_speed_bonus = mining_speed_bonus + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'xp' THEN
-        UPDATE users SET xp = xp + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'regen' THEN
-        UPDATE users SET energy_regen_bonus = energy_regen_bonus + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'max_energy' THEN
-        UPDATE users SET max_energy = max_energy + p_reward_value WHERE telegram_id = p_user_id;
-    ELSIF p_reward_type = 'ton' THEN
-        UPDATE users SET ton_balance = ton_balance + p_reward_value WHERE telegram_id = p_user_id;
-    END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- 8. CLAIM STREAK RPC
-CREATE OR REPLACE FUNCTION claim_streak(p_user_id BIGINT)
-RETURNS JSON AS $$
-DECLARE
-    v_user RECORD;
-    v_today DATE := CURRENT_DATE;
-    v_new_streak INT;
-    v_speed_reward FLOAT := 1;
-    v_max_energy_reward FLOAT := 100;
-    v_config RECORD;
-BEGIN
-    SELECT * INTO v_user FROM users WHERE telegram_id = p_user_id FOR UPDATE;
-    
-    IF v_user.last_streak_claim = v_today THEN
-        RETURN json_build_object('success', false, 'error', 'Already claimed today');
-    END IF;
-
-    v_new_streak := COALESCE(v_user.login_streak, 0) + 1;
-    IF v_new_streak > 7 THEN
-        v_new_streak := 1;
-    END IF;
-
-    -- try to read from streak_rewards table if exists (assuming it does or ignore)
-    BEGIN
-        SELECT * INTO v_config FROM streak_rewards WHERE day = v_new_streak;
-        IF FOUND THEN
-            v_speed_reward := COALESCE(v_config.speed_reward, 1);
-            v_max_energy_reward := COALESCE(v_config.max_energy_reward, 100);
-        END IF;
-    EXCEPTION WHEN undefined_table THEN
-        -- ignore
-    END;
-
-    UPDATE users SET 
-        last_streak_claim = v_today,
-        login_streak = v_new_streak,
-        mining_speed_bonus = COALESCE(mining_speed_bonus, 0) + v_speed_reward,
-        max_energy = COALESCE(max_energy, 1000) + v_max_energy_reward
-    WHERE telegram_id = p_user_id;
-
-    RETURN json_build_object('success', true, 'day', v_new_streak, 'speedReward', v_speed_reward, 'maxEnergyReward', v_max_energy_reward);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+ - -   6 .   E X E C U T E   S P I N   R P C 
+ C R E A T E   O R   R E P L A C E   F U N C T I O N   e x e c u t e _ s p i n ( p _ u s e r _ i d   B I G I N T ) 
+ R E T U R N S   J S O N   A S   \ $ \ $ 
+ D E C L A R E 
+         v _ u s e r   R E C O R D ; 
+         v _ c o n f i g   R E C O R D ; 
+         v _ s e g m e n t s   J S O N B ; 
+         v _ s e g m e n t   J S O N B ; 
+         v _ i d x   I N T ; 
+         v _ r a n d   F L O A T ; 
+         v _ c u m u l a t i v e   F L O A T   : =   0 ; 
+         v _ t a r g e t _ i n d e x   I N T   : =   0 ; 
+         v _ r e w a r d _ t y p e   T E X T ; 
+         v _ r e w a r d _ a m o u n t   F L O A T ; 
+         v _ t o d a y   D A T E   : =   C U R R E N T _ D A T E ; 
+ B E G I N 
+         S E L E C T   *   I N T O   v _ u s e r   F R O M   u s e r s   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d   F O R   U P D A T E ; 
+         
+         I F   v _ u s e r . l a s t _ f r e e _ s p i n   ! =   v _ t o d a y   T H E N 
+                 U P D A T E   u s e r s   S E T   l a s t _ f r e e _ s p i n   =   v _ t o d a y   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   v _ u s e r . s p i n _ t i c k e t s   >   0   T H E N 
+                 U P D A T E   u s e r s   S E T   s p i n _ t i c k e t s   =   s p i n _ t i c k e t s   -   1   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S E 
+                 R E T U R N   j s o n _ b u i l d _ o b j e c t ( ' s u c c e s s ' ,   f a l s e ,   ' e r r o r ' ,   ' N o   t i c k e t s   a v a i l a b l e ' ) ; 
+         E N D   I F ; 
+ 
+         S E L E C T   s p i n _ s e g m e n t s _ j s o n   I N T O   v _ s e g m e n t s   F R O M   g a m e _ c o n f i g   W H E R E   i d   =   1 ; 
+         I F   v _ s e g m e n t s   I S   N U L L   T H E N 
+                 R E T U R N   j s o n _ b u i l d _ o b j e c t ( ' s u c c e s s ' ,   f a l s e ,   ' e r r o r ' ,   ' S p i n   c o n f i g u r a t i o n   n o t   f o u n d ' ) ; 
+         E N D   I F ; 
+ 
+         v _ r a n d   : =   r a n d o m ( ) ; 
+         
+         F O R   v _ i d x   I N   0   . .   j s o n b _ a r r a y _ l e n g t h ( v _ s e g m e n t s )   -   1   L O O P 
+                 v _ s e g m e n t   : =   v _ s e g m e n t s - > v _ i d x ; 
+                 v _ c u m u l a t i v e   : =   v _ c u m u l a t i v e   +   C O A L E S C E ( ( v _ s e g m e n t - > > ' p r o b a b i l i t y ' ) : : F L O A T ,   0 ) ; 
+                 I F   v _ r a n d   < =   v _ c u m u l a t i v e   T H E N 
+                         v _ t a r g e t _ i n d e x   : =   v _ i d x ; 
+                         v _ r e w a r d _ t y p e   : =   v _ s e g m e n t - > > ' t y p e ' ; 
+                         v _ r e w a r d _ a m o u n t   : =   ( v _ s e g m e n t - > > ' r e w a r d ' ) : : F L O A T ; 
+                         E X I T ; 
+                 E N D   I F ; 
+         E N D   L O O P ; 
+ 
+         - -   A p p l y   r e w a r d 
+         I F   v _ r e w a r d _ t y p e   =   ' e n e r g y '   T H E N 
+                 U P D A T E   u s e r s   S E T   e n e r g y   =   e n e r g y   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   v _ r e w a r d _ t y p e   =   ' v o t e s '   T H E N 
+                 U P D A T E   u s e r s   S E T   t o t a l _ v o t e s   =   t o t a l _ v o t e s   +   v _ r e w a r d _ a m o u n t ,   a v a i l a b l e _ v o t e s   =   a v a i l a b l e _ v o t e s   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   v _ r e w a r d _ t y p e   =   ' s p e e d '   T H E N 
+                 U P D A T E   u s e r s   S E T   m i n i n g _ s p e e d _ b o n u s   =   m i n i n g _ s p e e d _ b o n u s   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   v _ r e w a r d _ t y p e   =   ' x p '   T H E N 
+                 U P D A T E   u s e r s   S E T   x p   =   x p   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+                 - -   L e v e l   u p   l o g i c   s k i p p e d   h e r e   f o r   b r e v i t y ,   r e l y   o n   b a c k e n d   o r   s e p a r a t e   c r o n 
+         E L S I F   v _ r e w a r d _ t y p e   =   ' r e g e n '   T H E N 
+                 U P D A T E   u s e r s   S E T   e n e r g y _ r e g e n _ b o n u s   =   e n e r g y _ r e g e n _ b o n u s   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   v _ r e w a r d _ t y p e   =   ' t o n '   T H E N 
+                 U P D A T E   u s e r s   S E T   t o n _ b a l a n c e   =   t o n _ b a l a n c e   +   v _ r e w a r d _ a m o u n t   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E N D   I F ; 
+ 
+         I N S E R T   I N T O   s p i n _ r e s u l t s   ( u s e r _ i d ,   r e w a r d _ t y p e ,   r e w a r d _ a m o u n t )   V A L U E S   ( p _ u s e r _ i d ,   v _ r e w a r d _ t y p e ,   v _ r e w a r d _ a m o u n t ) ; 
+ 
+         R E T U R N   j s o n _ b u i l d _ o b j e c t ( ' s u c c e s s ' ,   t r u e ,   ' t a r g e t I n d e x ' ,   v _ t a r g e t _ i n d e x ,   ' r e w a r d T y p e ' ,   v _ r e w a r d _ t y p e ,   ' r e w a r d A m o u n t ' ,   v _ r e w a r d _ a m o u n t ) ; 
+ E N D ; 
+ \ $ \ $   L A N G U A G E   p l p g s q l   S E C U R I T Y   D E F I N E R ; 
+  
+ 
+ - -   7 .   G R A N T   R E W A R D   R P C   ( S e r v e r - s i d e   u t i l i t y ) 
+ C R E A T E   O R   R E P L A C E   F U N C T I O N   g r a n t _ r e w a r d ( p _ u s e r _ i d   B I G I N T ,   p _ r e w a r d _ t y p e   T E X T ,   p _ r e w a r d _ v a l u e   F L O A T ) 
+ R E T U R N S   v o i d   A S   \ $ \ $ 
+ B E G I N 
+         I F   p _ r e w a r d _ t y p e   =   ' e n e r g y '   T H E N 
+                 U P D A T E   u s e r s   S E T   e n e r g y   =   e n e r g y   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' v o t e s '   T H E N 
+                 U P D A T E   u s e r s   S E T   t o t a l _ v o t e s   =   t o t a l _ v o t e s   +   p _ r e w a r d _ v a l u e ,   a v a i l a b l e _ v o t e s   =   a v a i l a b l e _ v o t e s   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' s p e e d '   T H E N 
+                 U P D A T E   u s e r s   S E T   m i n i n g _ s p e e d _ b o n u s   =   m i n i n g _ s p e e d _ b o n u s   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' x p '   T H E N 
+                 U P D A T E   u s e r s   S E T   x p   =   x p   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' r e g e n '   T H E N 
+                 U P D A T E   u s e r s   S E T   e n e r g y _ r e g e n _ b o n u s   =   e n e r g y _ r e g e n _ b o n u s   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' m a x _ e n e r g y '   T H E N 
+                 U P D A T E   u s e r s   S E T   m a x _ e n e r g y   =   m a x _ e n e r g y   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E L S I F   p _ r e w a r d _ t y p e   =   ' t o n '   T H E N 
+                 U P D A T E   u s e r s   S E T   t o n _ b a l a n c e   =   t o n _ b a l a n c e   +   p _ r e w a r d _ v a l u e   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+         E N D   I F ; 
+ E N D ; 
+ \ $ \ $   L A N G U A G E   p l p g s q l   S E C U R I T Y   D E F I N E R ; 
+  
+ 
+ - -   8 .   C L A I M   S T R E A K   R P C 
+ C R E A T E   O R   R E P L A C E   F U N C T I O N   c l a i m _ s t r e a k ( p _ u s e r _ i d   B I G I N T ) 
+ R E T U R N S   J S O N   A S   \ $ \ $ 
+ D E C L A R E 
+         v _ u s e r   R E C O R D ; 
+         v _ t o d a y   D A T E   : =   C U R R E N T _ D A T E ; 
+         v _ n e w _ s t r e a k   I N T ; 
+         v _ s p e e d _ r e w a r d   F L O A T   : =   1 ; 
+         v _ m a x _ e n e r g y _ r e w a r d   F L O A T   : =   1 0 0 ; 
+         v _ c o n f i g   R E C O R D ; 
+ B E G I N 
+         S E L E C T   *   I N T O   v _ u s e r   F R O M   u s e r s   W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d   F O R   U P D A T E ; 
+         
+         I F   v _ u s e r . l a s t _ s t r e a k _ c l a i m   =   v _ t o d a y   T H E N 
+                 R E T U R N   j s o n _ b u i l d _ o b j e c t ( ' s u c c e s s ' ,   f a l s e ,   ' e r r o r ' ,   ' A l r e a d y   c l a i m e d   t o d a y ' ) ; 
+         E N D   I F ; 
+ 
+         v _ n e w _ s t r e a k   : =   C O A L E S C E ( v _ u s e r . l o g i n _ s t r e a k ,   0 )   +   1 ; 
+         I F   v _ n e w _ s t r e a k   >   7   T H E N 
+                 v _ n e w _ s t r e a k   : =   1 ; 
+         E N D   I F ; 
+ 
+         - -   t r y   t o   r e a d   f r o m   s t r e a k _ r e w a r d s   t a b l e   i f   e x i s t s   ( a s s u m i n g   i t   d o e s   o r   i g n o r e ) 
+         B E G I N 
+                 S E L E C T   *   I N T O   v _ c o n f i g   F R O M   s t r e a k _ r e w a r d s   W H E R E   d a y   =   v _ n e w _ s t r e a k ; 
+                 I F   F O U N D   T H E N 
+                         v _ s p e e d _ r e w a r d   : =   C O A L E S C E ( v _ c o n f i g . s p e e d _ r e w a r d ,   1 ) ; 
+                         v _ m a x _ e n e r g y _ r e w a r d   : =   C O A L E S C E ( v _ c o n f i g . m a x _ e n e r g y _ r e w a r d ,   1 0 0 ) ; 
+                 E N D   I F ; 
+         E X C E P T I O N   W H E N   u n d e f i n e d _ t a b l e   T H E N 
+                 - -   i g n o r e 
+         E N D ; 
+ 
+         U P D A T E   u s e r s   S E T   
+                 l a s t _ s t r e a k _ c l a i m   =   v _ t o d a y , 
+                 l o g i n _ s t r e a k   =   v _ n e w _ s t r e a k , 
+                 m i n i n g _ s p e e d _ b o n u s   =   C O A L E S C E ( m i n i n g _ s p e e d _ b o n u s ,   0 )   +   v _ s p e e d _ r e w a r d , 
+                 m a x _ e n e r g y   =   C O A L E S C E ( m a x _ e n e r g y ,   1 0 0 0 )   +   v _ m a x _ e n e r g y _ r e w a r d 
+         W H E R E   t e l e g r a m _ i d   =   p _ u s e r _ i d ; 
+ 
+         R E T U R N   j s o n _ b u i l d _ o b j e c t ( ' s u c c e s s ' ,   t r u e ,   ' d a y ' ,   v _ n e w _ s t r e a k ,   ' s p e e d R e w a r d ' ,   v _ s p e e d _ r e w a r d ,   ' m a x E n e r g y R e w a r d ' ,   v _ m a x _ e n e r g y _ r e w a r d ) ; 
+ E N D ; 
+ \ $ \ $   L A N G U A G E   p l p g s q l   S E C U R I T Y   D E F I N E R ; 
+  
+ 
