@@ -66,7 +66,7 @@ function NationSelectionScreen({ onSelect }) {
           >
             <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{nation.flag}</div>
             <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '4px' }}>{nation.name}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--neon-green)' }}>x{nation.multiplier} Multiplier</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--neon-green)' }}>x{nation.final_multiplier || nation.multiplier} Multiplier</div>
           </button>
         ))}
       </div>
