@@ -225,29 +225,31 @@ export default async function handler(req, res) {
         const { count: predictionsWon } = await supabase.from('predictions').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_correct', true);
         dbUser.predictions_won = predictionsWon || 0;
 
+        const { data: achievementDb } = await supabase.from('achievements').select('reward_votes').eq('id', taskId).single();
+        if (!achievementDb) return res.status(404).json({ error: 'Achievement not found in database' });
+
         // Validate condition
         let isValid = false;
-        let rewardVotes = 0;
+        let rewardVotes = achievementDb.reward_votes || 0;
         
-        const check = (id, condition, reward) => { if (taskId === id && condition) { isValid = true; rewardVotes = reward; } };
+        const check = (id, condition) => { if (taskId === id && condition) { isValid = true; } };
         
-        check('first_tap', dbUser.total_taps > 0, 100);
-        check('tap_1k', dbUser.total_taps >= 1000, 500);
-        check('tap_10k', dbUser.total_taps >= 10000, 2000);
-        check('tap_100k', dbUser.total_taps >= 100000, 10000);
-        check('tap_1m', dbUser.total_taps >= 1000000, 50000);
-        check('friends_5', dbUser.friend_count >= 5, 2000);
-        check('friends_20', dbUser.friend_count >= 20, 10000);
-        // Note: predict_win logic requires predictions table, simplifying for now
-        check('predict_win_3', dbUser.predictions_won >= 3, 5000);
-        check('predict_win_10', dbUser.predictions_won >= 10, 25000);
-        check('nft_5', dbUser.nft_count >= 5, 3000);
-        check('streak_7', dbUser.login_streak >= 7, 2000);
-        check('streak_30', dbUser.login_streak >= 30, 15000);
-        check('level_10', dbUser.level >= 10, 5000);
-        check('level_50', dbUser.level >= 50, 50000);
-        check('clan_join', dbUser.clan_id != null, 500);
-        check('founder', dbUser.founder_badge === true, 10000);
+        check('first_tap', dbUser.total_taps > 0);
+        check('tap_1k', dbUser.total_taps >= 1000);
+        check('tap_10k', dbUser.total_taps >= 10000);
+        check('tap_100k', dbUser.total_taps >= 100000);
+        check('tap_1m', dbUser.total_taps >= 1000000);
+        check('friends_5', dbUser.friend_count >= 5);
+        check('friends_20', dbUser.friend_count >= 20);
+        check('predict_win_3', dbUser.predictions_won >= 3);
+        check('predict_win_10', dbUser.predictions_won >= 10);
+        check('nft_5', dbUser.nft_count >= 5);
+        check('streak_7', dbUser.login_streak >= 7);
+        check('streak_30', dbUser.login_streak >= 30);
+        check('level_10', dbUser.level >= 10);
+        check('level_50', dbUser.level >= 50);
+        check('clan_join', dbUser.clan_id != null);
+        check('founder', dbUser.founder_badge === true);
 
         if (!isValid) return res.status(400).json({ error: 'Achievement condition not met' });
 
