@@ -144,8 +144,8 @@ class ApiClient {
     return this.get('/shop?action=history');
   }
 
-  buyItem(itemId, quantity = 1, tx_hash = null) {
-    return this.post('/shop', { action: 'buy', itemId, quantity, tx_hash });
+  buyItem(itemId, quantity = 1) {
+    return this.post('/shop', { action: 'buy', itemId, quantity });
   }
 
   // ── NFT ───────────────────────────────────────────
@@ -153,8 +153,8 @@ class ApiClient {
     return this.get(`/nft?action=list&rarity=${rarity}`);
   }
 
-  buyNFT(nftId, tx_hash = null) {
-    return this.post('/nft', { action: 'buy', nftId, tx_hash });
+  buyNFT(nftId) {
+    return this.post('/nft', { action: 'buy', nftId });
   }
 
   getMyNFTs() {

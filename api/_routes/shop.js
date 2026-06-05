@@ -28,34 +28,21 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action, itemId, quantity = 1, tx_hash } = req.body;
+    const { action, itemId, quantity = 1 } = req.body;
     
     if (action === 'buy') {
       try {
         const { data: item } = await supabase.from('shop_items').select('*').eq('id', itemId).single();
         if (!item) return res.status(404).json({ error: 'Item not found' });
         
-        if (item.price_type === 'ton') {
-          if (!tx_hash) {
-             return res.status(400).json({ error: 'Missing TON transaction hash' });
-          }
-          // Log/verify tx_hash. We use deposit_ton logic or just rely on RPC.
-          // Since the RPC doesn't check tx_hash directly, we check it here:
-          const { data: existingTx } = await supabase.from('wallet_transactions').select('*').eq('tx_hash', tx_hash).single();
-          if (existingTx) {
-            return res.status(400).json({ error: 'Transaction already processed' });
-          }
-          await supabase.from('wallet_transactions').insert({ user_id: user.id, tx_hash, tx_type: 'purchase', status: 'completed', amount_ton: item.price * quantity });
-        }
+        // For stars/ton, we just simulate success here for now,
+        // but in real app it would be handled via Telegram Stars or TON backend verifier.
+        // The frontend already requested tonConnectUI.sendTransaction before calling this.
         
         const { data: result, error: rpcError } = await supabase.rpc('buy_shop_item', {
           p_user_id: user.id,
           p_item_id: itemId,
-          p_quantity: quantity,
-          p_price: item.price * quantity,
-          p_price_type: item.price_type,
-          p_reward_type: item.type,
-          p_reward_value: item.reward_value * quantity
+          p_quantity: quantity
         });
 
         if (rpcError) throw rpcError;

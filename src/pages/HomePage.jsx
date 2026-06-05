@@ -118,12 +118,10 @@ export default function HomePage() {
     setClaiming(true);
     let totalWon = 0;
     try {
-      const claimPromises = unclaimedPredictions.map(p => api.claimPrediction(p.id));
-      const results = await Promise.all(claimPromises);
-      
-      for (const res of results) {
+      for (const p of unclaimedPredictions) {
+        const res = await api.claimPrediction(p.id);
         if (res.success) {
-          totalWon += res.reward || 0;
+          totalWon += res.reward;
         }
       }
       telegram.haptic.notification('success');
@@ -364,60 +362,66 @@ function SpinModalContent() {
     try {
       const res = await api.spin('start_spin', null, segCount);
       if (!res.success) throw new Error(res.error || 'Failed to start spin');
-    telegram.haptic.impact('light');
-
-    try {
-      const res = await api.spin('start_spin');
-      if (!res.success) throw new Error(res.error || 'Failed to spin');
-
-      const target = res.targetIndex;
-      const reward = segments[target];
-      const segmentAngle = 360 / segCount;
-      const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
-
-      const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
-      const currentRemainder = ((rotation % 360) + 360) % 360;
-      let delta = desiredRemainder - currentRemainder;
-      if (delta < 0) delta += 360;
-      const fullSpins = 5 * 360;
-      const totalDelta = fullSpins + delta;
-
-      setRotation(prev => prev + totalDelta);
-
-      setTimeout(async () => {
-        setSpinning(false);
-        setWonPrize(reward);
-        telegram.haptic.notification('success');
-        
-        // Apply reward locally for instant UI update
-        if (res.rewardType === 'energy') {
-          useGameStore.setState(s => ({ energy: s.energy + res.rewardAmount }));
-        } else if (res.rewardType === 'votes') {
-          useGameStore.setState(s => ({ totalVotes: s.totalVotes + res.rewardAmount, availableVotes: s.availableVotes + res.rewardAmount }));
-        } else if (res.rewardType === 'speed') {
-          useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + res.rewardAmount }));
-        } else if (res.rewardType === 'xp') {
-          useUserStore.getState().addXp(res.rewardAmount);
-        } else if (res.rewardType === 'regen') {
-          useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + res.rewardAmount }));
-        } else if (res.rewardType === 'ton') {
-          useGameStore.setState(s => ({ tonBalance: (s.tonBalance || 0) + res.rewardAmount }));
-        }
-
-        // Re-fetch from server to get accurate stats
-        try {
-          const authData = await api.auth();
-          if (authData?.user) {
-            useGameStore.getState().setGameState(authData.user);
-          }
-        } catch (e) {
-          console.error('Failed to refresh stats', e);
-        }
-      }, 4000);
-    } catch (err) {
-      alert(err.message || 'Spin failed');
+      target = res.targetIndex;
+      loadSpinInfo(); // Update UI tickets immediately
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
       setSpinning(false);
+      return;
     }
+    const segmentAngle = 360 / segCount;
+
+    // Segment 0 is now centered at the top.
+    // Random position within the target segment (-35% to +35% of segment angle from center)
+    const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
+
+    // The pointer is fixed at the top (0°).
+    // When the wheel has rotated a total of R degrees clockwise, the pointer points at
+    // the angle (360 - R % 360) % 360 from the top.
+    // We want that to equal target*segmentAngle + offsetInSegment.
+    const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
+    const currentRemainder = ((rotation % 360) + 360) % 360;
+    let delta = desiredRemainder - currentRemainder;
+    if (delta < 0) delta += 360;
+    const fullSpins = 5 * 360;
+    const totalDelta = fullSpins + delta;
+
+    setRotation(prev => prev + totalDelta);
+
+    setTimeout(async () => {
+      setSpinning(false);
+      const reward = segments[target];
+      setWonPrize(reward);
+      telegram.haptic.notification('success');
+      
+      // Apply reward locally
+      if (reward.type === 'energy') {
+        useGameStore.setState(s => ({ energy: s.energy + reward.reward }));
+      } else if (reward.type === 'votes') {
+        useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
+      } else if (reward.type === 'speed') {
+        useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + reward.reward }));
+      } else if (reward.type === 'xp') {
+        useUserStore.getState().addXp(reward.reward);
+      } else if (reward.type === 'regen') {
+        useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
+      } else if (reward.type === 'ton') {
+        useGameStore.setState(s => ({ tonBalance: s.tonBalance + reward.reward }));
+      }
+
+      // Save to database and refresh stats
+      try {
+        await api.spin('save_reward', reward);
+        // Re-fetch from server to get accurate stats
+        const authData = await api.auth();
+        if (authData?.user) {
+          useGameStore.getState().setGameState(authData.user);
+        }
+      } catch (e) {
+        console.error('Failed to save spin reward', e);
+      }
+    }, 4000);
   };
 
   if (!segments || segCount === 0) return <div>Loading spin config...</div>;
