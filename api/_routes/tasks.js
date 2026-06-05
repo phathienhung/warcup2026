@@ -118,7 +118,17 @@ export default async function handler(req, res) {
         // If it's a telegram channel/group task, verify membership with Bot API
         if (task.type === 'telegram' && task.verification_data) {
           const botToken = process.env.TELEGRAM_BOT_TOKEN;
-          const channelId = task.verification_data; // e.g. '@warcup2026_community'
+          let channelId = task.verification_data.trim(); // e.g. '@warcup2026_community' or 'https://t.me/...'
+          
+          // Convert t.me links to @username format
+          if (channelId.includes('t.me/')) {
+            const match = channelId.match(/t\.me\/([a-zA-Z0-9_]+)/);
+            if (match && match[1] && match[1] !== 'joinchat') {
+              channelId = '@' + match[1];
+            }
+          } else if (!channelId.startsWith('@') && !channelId.startsWith('-')) {
+            channelId = '@' + channelId;
+          }
           
           const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelId}&user_id=${user.id}`);
           const tgData = await tgRes.json();
