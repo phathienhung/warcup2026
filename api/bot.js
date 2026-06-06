@@ -75,8 +75,9 @@ export default async function handler(req, res) {
       }
 
       if (cbData.startsWith('withdraw_')) {
-        // SECURITY: Only admin can approve withdrawals
-        if (adminChatId && String(cb.from.id) !== String(adminChatId)) {
+        // SECURITY: Only allow actions from the admin chat
+        const isFromAdmin = adminChatId && (String(cb.from?.id) === String(adminChatId) || String(cb.message?.chat?.id) === String(adminChatId));
+        if (!isFromAdmin) {
           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
           return res.status(200).send('OK');
         }
@@ -114,8 +115,9 @@ export default async function handler(req, res) {
         }
       }
       else if (cbData.startsWith('reject_')) {
-        // SECURITY: Only admin can reject withdrawals
-        if (adminChatId && String(cb.from.id) !== String(adminChatId)) {
+        // SECURITY: Only allow actions from the admin chat
+        const isFromAdmin = adminChatId && (String(cb.from?.id) === String(adminChatId) || String(cb.message?.chat?.id) === String(adminChatId));
+        if (!isFromAdmin) {
           await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
           return res.status(200).send('OK');
         }
