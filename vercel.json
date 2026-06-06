@@ -16,5 +16,11 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-Telegram-Init-Data" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/sync-matches",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }
