@@ -41,6 +41,8 @@ export async function verifyDeposit(senderAddress, receiverAddress, expectedAmou
 
     // Helper to convert friendly address to raw
     const toRaw = (friendly) => {
+      if (!friendly) return friendly;
+      if (friendly.includes(':')) return friendly; // Already raw format
       try {
         const buf = Buffer.from(friendly.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
         const workchain = buf.readInt8(1);
