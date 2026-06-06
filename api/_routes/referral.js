@@ -72,11 +72,9 @@ export default async function handler(req, res) {
         console.error('Milestone claim error:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
-    }
-
-    if (action === 'claim_commissions') {
+    } else if (action === 'claim_ton_commissions') {
       try {
-        const { data: result, error: rpcError } = await supabase.rpc('claim_commissions', {
+        const { data: result, error: rpcError } = await supabase.rpc('claim_ton_commissions', {
           p_user_id: user.id
         });
         
@@ -86,9 +84,9 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: result.error });
         }
         
-        return res.status(200).json({ success: true, tonClaimed: result.ton_claimed });
+        return res.status(200).json(result);
       } catch (err) {
-        console.error('Commission claim error:', err);
+        console.error('TON claim error:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
     }

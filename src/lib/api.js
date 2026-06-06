@@ -112,8 +112,8 @@ class ApiClient {
     return this.post('/referral', { action: 'claim_milestone', milestoneCount });
   }
 
-  async claimCommissions() {
-    return this.post('/referral', { action: 'claim_commissions' });
+  async claimTonCommissions() {
+    return this.post('/referral', { action: 'claim_ton_commissions' });
   }
 
   async claimAchievement(achievementId) {

@@ -36,8 +36,8 @@ export const useUserStore = create((set, get) => ({
   nftCount: 0,
   predictionsWon: 0,
   predictionsTotal: 0,
-  winStreak: 0,
   unclaimedRefTon: 0,
+  winStreak: 0,
 
   // ── Auth ──────────────────────────────────────────
   async authenticate() {
