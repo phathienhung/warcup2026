@@ -57,7 +57,7 @@ export async function verifyDeposit(senderAddress, receiverAddress, expectedAmou
       if (!tx.in_msg || !tx.in_msg.source) continue;
       
       // Match sender address
-      if (tx.in_msg.source !== senderAddress && tx.in_msg.source !== rawSender) continue;
+      if (tx.in_msg.source !== senderAddress && toRaw(tx.in_msg.source) !== rawSender) continue;
 
       const txValue = BigInt(tx.in_msg.value || '0');
       
