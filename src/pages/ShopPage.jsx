@@ -100,11 +100,12 @@ export default function ShopPage() {
         const missingTon = requiredTon - currentTon;
 
         if (missingTon > 0) {
+          const inGameWallet = import.meta.env.VITE_IN_GAME_WALLET || 'UQANRLrMrxdOpOidj71SCe9Bgx6cNX6CcMEygRpxmkvEMt2K';
           const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 60,
             messages: [
               {
-                address: 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+                address: inGameWallet,
                 amount: String(Math.floor(missingTon * 1000000000)),
               }
             ]
@@ -115,8 +116,28 @@ export default function ShopPage() {
           const userAddress = tonConnectUI.account?.address;
           if (!userAddress) throw new Error("Wallet not connected");
           
-          const depositRes = await api.depositWallet(missingTon, userAddress);
-          if (!depositRes.success) throw new Error("Failed to process deposit");
+          let depositRes = null;
+          let success = false;
+          
+          // Show a temporary toast while waiting
+          telegram.haptic.notification('success');
+          
+          for (let i = 0; i < 4; i++) {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            try {
+              depositRes = await api.depositWallet(missingTon, userAddress);
+              if (depositRes.success) {
+                success = true;
+                break;
+              }
+            } catch (err) {
+              console.log('Verification retry...', err);
+            }
+          }
+          
+          if (!success) {
+            throw new Error("Deposit verification is taking longer than expected. Please wait a minute and try buying again (your balance will be credited automatically).");
+          }
         }
         
         let res;
