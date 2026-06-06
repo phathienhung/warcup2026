@@ -57,9 +57,9 @@ export default async function handler(req, res) {
         if (bot && adminChatId) {
           const { data: dbUser } = await supabase.from('users').select('username').eq('telegram_id', user.id).single();
           const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
-          const text = `📤 *WITHDRAW REQUEST*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
+          const text = `📤 *WITHDRAW REQUEST*\nUser: ${usernameStr}\nRequested: *${amount} TON*\nFee (10%): *${result.fee} TON*\nPayout: *${result.payout} TON*\nWallet: \`${address}\``;
           
-          const nanoTon = Math.floor(amount * 1e9);
+          const nanoTon = Math.floor(result.payout * 1e9);
           const keyboard = new InlineKeyboard()
             .url('🔗 Open Tonkeeper to Pay', `ton://transfer/${address}?amount=${nanoTon}`).row()
             .text('✅ Confirm Transfer', `withdraw_${result.transaction_id}`).row()
