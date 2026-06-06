@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { data: config } = await supabase.from('game_config').select('*').single();
-      const { data: nations } = await supabase.from('vw_nation_multipliers').select('*');
+      const { data: nations } = await supabase.from('nations').select('*');
       const { data: shop_items } = await supabase.from('shop_items').select('*');
       const { data: nft_templates } = await supabase.from('nft_templates').select('*');
       const { data: daily_tasks } = await supabase.from('daily_tasks').select('*');

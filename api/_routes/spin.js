@@ -23,83 +23,75 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action, reward, segCount } = req.body;
+    const { action } = req.body;
     
     if (action === 'start_spin') {
-      const { data: dbUser } = await supabase.from('users').select('spin_tickets, last_free_spin').eq('telegram_id', user.id).single();
-      if (!dbUser) return res.status(404).json({ error: 'User not found' });
-      
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (dbUser.last_free_spin !== today) {
-        await supabase.from('users').update({ last_free_spin: today }).eq('telegram_id', user.id);
-      } else if (dbUser.spin_tickets > 0) {
-        await supabase.from('users').update({ spin_tickets: dbUser.spin_tickets - 1 }).eq('telegram_id', user.id);
-      } else {
-        return res.status(400).json({ error: 'No tickets available' });
-      }
-      
-      const targetIndex = Math.floor(Math.random() * (segCount || 8));
-      return res.status(200).json({ success: true, targetIndex });
-    }
-    
-    if (action === 'save_reward' && reward) {
       try {
-        // Fetch current user stats
-        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+        const { data: dbUser } = await supabase.from('users').select('spin_tickets, last_free_spin, energy, total_votes, available_votes, mining_speed_bonus, xp, level, energy_regen_bonus, max_energy, ton_balance').eq('telegram_id', user.id).single();
         if (!dbUser) return res.status(404).json({ error: 'User not found' });
-
-        const updates = {};
         
-        if (reward.type === 'energy') {
-          updates.energy = (dbUser.energy || 0) + reward.reward;
-        } else if (reward.type === 'votes') {
-          updates.total_votes = (dbUser.total_votes || 0) + reward.reward;
-          updates.available_votes = (dbUser.available_votes || 0) + reward.reward;
-        } else if (reward.type === 'speed') {
-          // Note: mining speed is derived in some places, but we can store a bonus
-          updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + reward.reward;
-        } else if (reward.type === 'xp') {
-          updates.xp = (dbUser.xp || 0) + reward.reward;
-          const newLevel = computeLevelFromXp(updates.xp);
-          if (newLevel > (dbUser.level || 1)) {
-            updates.level = newLevel;
-            const { data: config } = await supabase.from('game_config').select('level_up_reward_type, level_up_reward_value').eq('id', 1).single();
-            const levelsGained = newLevel - (dbUser.level || 1);
-            const rewardType = config?.level_up_reward_type || 'speed';
-            const rewardValue = (config?.level_up_reward_value || 1) * levelsGained;
+        const today = new Date().toISOString().split('T')[0];
+        let usingFreeSpin = false;
 
-            if (rewardType === 'speed') {
-              updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + rewardValue;
-            } else if (rewardType === 'regen') {
-              updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + rewardValue;
-            } else if (rewardType === 'max_energy') {
-              updates.max_energy = (dbUser.max_energy || 1000) + rewardValue;
+        if (dbUser.last_free_spin !== today) {
+          usingFreeSpin = true;
+        } else if (dbUser.spin_tickets > 0) {
+          usingFreeSpin = false;
+        } else {
+          return res.status(400).json({ error: 'No tickets available' });
+        }
+
+        // Fetch segments
+        const { data: config } = await supabase.from('game_config').select('spin_segments_json, level_up_reward_type, level_up_reward_value').eq('id', 1).single();
+        const segments = config?.spin_segments_json || [];
+        
+        if (segments.length === 0) {
+           return res.status(500).json({ error: 'Spin configuration missing' });
+        }
+
+        // Pick a random index based on probability
+        const rand = Math.random();
+        let cumulative = 0;
+        let targetIndex = 0;
+        for (let i = 0; i < segments.length; i++) {
+            cumulative += segments[i].probability || (1 / segments.length);
+            if (rand <= cumulative) {
+                targetIndex = i;
+                break;
             }
-          }
-        } else if (reward.type === 'regen') {
-          updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + reward.reward;
-        } else if (reward.type === 'ton') {
-          updates.ton_balance = (dbUser.ton_balance || 0) + reward.reward;
         }
-
-        // Save to users table
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('users').update(updates).eq('telegram_id', user.id);
-        }
-
-        // Save spin history
-        await supabase.from('spin_results').insert({
-          user_id: user.id,
-          reward_type: reward.type,
-          reward_amount: reward.reward
-        });
         
-        return res.status(200).json({ success: true, updated_bonus: updates.mining_speed_bonus });
+        const reward = segments[targetIndex];
+        
+        // Use Atomic RPC to execute spin
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('execute_spin', {
+          p_user_id: user.id,
+          p_today_str: today,
+          p_reward_type: reward.type,
+          p_reward_amount: reward.reward
+        });
+
+        if (rpcError) throw rpcError;
+        if (!rpcResult.success) {
+          return res.status(400).json({ error: rpcResult.error });
+        }
+
+        // The frontend now doesn't need to call save_reward.
+        // It just animates to targetIndex.
+        return res.status(200).json({ success: true, targetIndex, reward });
       } catch (err) {
-        console.error('Spin save error:', err);
+        console.error('Spin error:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
     }
+    
+    // Legacy support to prevent frontend crashing if it still calls it
+    if (action === 'save_reward') {
+      return res.status(200).json({ success: true, message: 'Handled by start_spin now' });
+    }
+
+    return res.status(400).json({ error: 'Invalid action' });
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

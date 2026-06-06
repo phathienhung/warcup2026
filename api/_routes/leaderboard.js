@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const type = req.query.type || 'global';
-    const limit = parseInt(req.query.limit || '100', 10);
+    const limit = Math.min(parseInt(req.query.limit || '100', 10) || 100, 100);
     
     let query = supabase
       .from('users')
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         .from('users')
         .select('telegram_id, username, favorite_nation, user_nfts(nft_templates(vote_multiplier))');
         
-      if (usersError) return res.status(500).json({ error: usersError.message });
+      if (usersError) return res.status(500).json({ error: 'Failed to fetch leaderboard' });
       
       const computed = usersData.map(u => {
         let nftMultiplier = 1.0;
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     }
 
     const { data, error } = await query;
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: 'Failed to fetch leaderboard' });
 
     // Add rank
     const rankedData = data.map((item, index) => ({

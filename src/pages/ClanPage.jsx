@@ -51,7 +51,7 @@ export default function ClanPage() {
               <div className="nation-flag" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{nation.flag}</div>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{nation.name || nation.code}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--neon-green)' }}>
-                {nation.final_multiplier ? `x${nation.final_multiplier} Boost` : 'x1.00 Boost'}
+                x{Number(nation.final_multiplier || nation.multiplier || 1).toFixed(2)} Boost
               </div>
             </div>
           ))}

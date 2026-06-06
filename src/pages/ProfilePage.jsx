@@ -202,7 +202,7 @@ export default function ProfilePage() {
         
         {nationData && (
           <div className="badge badge-blue">
-            {nationData.flag} Team {nationData.name} (x{nationData.final_multiplier || nationData.multiplier} Bonus)
+            {nationData.flag} Team {nationData.name} (x{Number(nationData.final_multiplier || nationData.multiplier || 1).toFixed(2)} Bonus)
           </div>
         )}
       </div>

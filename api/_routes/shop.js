@@ -17,18 +17,20 @@ export default async function handler(req, res) {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
         
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ error: 'Failed to fetch purchase history' });
       return res.status(200).json(data);
     }
     
     // Default GET: return shop items
     const { data: shopItems, error: shopError } = await supabase.from('shop_items').select('*').order('price', { ascending: true });
-    if (shopError) return res.status(500).json({ error: shopError.message });
+    if (shopError) return res.status(500).json({ error: 'Failed to fetch shop items' });
     return res.status(200).json(shopItems); 
   }
 
   if (req.method === 'POST') {
     const { action, itemId, quantity = 1 } = req.body;
+    
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 100) return res.status(400).json({ error: 'Invalid quantity' });
     
     if (action === 'buy') {
       try {
@@ -60,4 +62,6 @@ export default async function handler(req, res) {
     
     return res.status(400).json({ error: 'Invalid action' });
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

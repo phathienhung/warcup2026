@@ -58,10 +58,16 @@ export default function WalletPage() {
 
     try {
       await tonConnectUI.sendTransaction(transaction);
-      await api.depositWallet(Number(depositAmount), address);
-      alert('Deposit transaction sent! It is pending confirmation.');
-      setDepositAmount('');
-      loadHistory();
+      const res = await api.depositWallet(Number(depositAmount), address);
+      if (res.success) {
+        useGameStore.setState({ 
+          tonBalance: res.newBalance,
+          tonDeposited: res.newDeposited
+        });
+        alert('Deposit transaction sent! Balance updated.');
+        setDepositAmount('');
+        loadHistory();
+      }
     } catch (e) {
       console.error(e);
       alert('Transaction cancelled or failed');

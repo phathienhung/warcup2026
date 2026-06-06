@@ -10,14 +10,14 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    // Get mining info
     const { data } = await supabase.from('users').select('total_votes, energy, max_energy').eq('telegram_id', user.id).single();
     return res.status(200).json(data);
   }
 
   if (req.method === 'POST') {
     const { count } = req.body;
-    if (!count || typeof count !== 'number' || count < 0 || count > 1000) {
+    // M-8 FIX: reject 0, NaN, non-integer, negative
+    if (!count || typeof count !== 'number' || !Number.isInteger(count) || count <= 0 || count > 1000) {
       return res.status(400).json({ error: 'Invalid tap count' });
     }
 
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
           total_taps: newTotalTaps,
           xp: newXp,
           level: newLevel,
-          last_login: now.toISOString(), // Update last_login so next regen is calculated from now
+          last_login: now.toISOString(),
           ...levelUpUpdates
         })
         .eq('telegram_id', user.id);
@@ -164,4 +164,6 @@ export default async function handler(req, res) {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

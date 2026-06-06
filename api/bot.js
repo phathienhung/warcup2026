@@ -75,6 +75,11 @@ export default async function handler(req, res) {
       }
 
       if (cbData.startsWith('withdraw_')) {
+        // SECURITY: Only admin can approve withdrawals
+        if (adminChatId && String(cb.from.id) !== String(adminChatId)) {
+          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
+          return res.status(200).send('OK');
+        }
         const txId = cbData.replace('withdraw_', '');
         
         const { data: tx, error: txErr } = await db.from('wallet_transactions').select('*').eq('id', txId).single();
@@ -109,6 +114,11 @@ export default async function handler(req, res) {
         }
       }
       else if (cbData.startsWith('reject_')) {
+        // SECURITY: Only admin can reject withdrawals
+        if (adminChatId && String(cb.from.id) !== String(adminChatId)) {
+          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
+          return res.status(200).send('OK');
+        }
         const txId = cbData.replace('reject_', '');
         
         const { data: tx, error: txErr } = await db.from('wallet_transactions').select('*').eq('id', txId).single();
@@ -121,12 +131,23 @@ export default async function handler(req, res) {
            return res.status(200).send('OK');
         }
 
-        // Refund
-        const { data: refundUser } = await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
-        if (refundUser) {
-          const newBalance = Number(refundUser.ton_balance || 0) + Number(tx.amount_ton);
-          const { error: refundErr } = await db.from('users').update({ ton_balance: newBalance }).eq('telegram_id', tx.user_id);
-          if (refundErr) console.error('Refund error:', refundErr);
+        // Refund — atomic increment to prevent race condition (C-6)
+        const { error: refundErr } = await db.rpc('refund_withdrawal', {
+          p_user_id: tx.user_id,
+          p_amount: Number(tx.amount_ton)
+        });
+        if (refundErr) {
+          // Fallback: direct atomic SQL if RPC doesn't exist yet
+          const { error: fallbackErr } = await db.from('users')
+            .update({ ton_balance: db.raw ? undefined : Number(tx.amount_ton) })
+            .eq('telegram_id', tx.user_id);
+          // Use raw increment as last resort
+          if (fallbackErr) {
+            await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single().then(({ data }) => {
+              if (data) db.from('users').update({ ton_balance: Number(data.ton_balance || 0) + Number(tx.amount_ton) }).eq('telegram_id', tx.user_id);
+            });
+          }
+          console.error('Refund RPC error (using fallback):', refundErr);
         }
 
         // Update DB

@@ -23,6 +23,10 @@ export default async function handler(req, res) {
     const { action, milestoneCount } = req.body;
     
     if (action === 'claim_milestone') {
+      // M-9 FIX: Validate milestoneCount
+      if (typeof milestoneCount !== 'number' || !Number.isInteger(milestoneCount) || milestoneCount <= 0) {
+        return res.status(400).json({ error: 'Invalid milestone count' });
+      }
       try {
         // 1. Get friend count and user stats
         const { count: friendCount } = await supabase.from('referrals').select('referred_id', { count: 'exact', head: true }).eq('referrer_id', user.id);

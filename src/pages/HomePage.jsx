@@ -119,9 +119,13 @@ export default function HomePage() {
     let totalWon = 0;
     try {
       for (const p of unclaimedPredictions) {
-        const res = await api.claimPrediction(p.id);
-        if (res.success) {
-          totalWon += res.reward;
+        try {
+          const res = await api.claimPrediction(p.id);
+          if (res.success) {
+            totalWon += res.reward;
+          }
+        } catch (e) {
+          console.error('Failed to claim prediction', p.id, e);
         }
       }
       telegram.haptic.notification('success');
@@ -147,12 +151,12 @@ export default function HomePage() {
 
     telegram.haptic.impact('light');
 
-    // Add particles
+    const votesPerParticle = Math.max(1, Math.floor(votes / touches.length));
     const newParticles = touches.map(t => ({
       x: t.clientX,
       y: t.clientY,
       timestamp: Date.now(),
-      votes
+      votes: votesPerParticle
     }));
     setParticles(prev => [...prev, ...newParticles]);
   };

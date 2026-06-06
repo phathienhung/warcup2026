@@ -29,7 +29,14 @@ class ApiClient {
 
     const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
     const response = await fetch(url, options);
-    const data = await response.json();
+    
+    let data;
+    const text = await response.text();
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (e) {
+      throw new ApiError(text || 'Invalid JSON response', response.status, { text });
+    }
 
     if (!response.ok) {
       throw new ApiError(data.error || 'Request failed', response.status, data);

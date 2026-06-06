@@ -1,7 +1,12 @@
 import { supabase } from '../_lib/supabase.js';
+import { validateInitData } from '../_lib/auth.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const initData = req.headers['x-telegram-init-data'];
+  const user = validateInitData(initData);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
     try {

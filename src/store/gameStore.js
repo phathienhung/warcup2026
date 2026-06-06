@@ -5,7 +5,6 @@ export const useGameStore = create((set, get) => ({
   // ── Tap State ─────────────────────────────────────
   totalVotes: 0,
   availableVotes: 0,
-  tonBalance: 0,
   miningSpeed: 1,
   miningSpeedBase: 1,
   miningSpeedMultiply: 0,
@@ -97,6 +96,7 @@ export const useGameStore = create((set, get) => ({
 
     // Sync immediately if we hit 5 taps
     if (state.pendingTaps + touchCount >= 5) {
+      if (state.syncTimeout) clearTimeout(state.syncTimeout);
       get().syncTaps();
     } else {
       // Otherwise, set a timeout to sync after 1 second of inactivity

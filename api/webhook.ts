@@ -1,11 +1,20 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-const BOT_TOKEN = '8786997942:AAFt9QTygMHEy2YDu4Ht2ftTF2nkyEymx38';
-const ADMIN_CHAT_ID = '1597337885';
-const CHANNEL_CHAT_ID = '@warcup2026_withdrawals';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
+const CHANNEL_CHAT_ID = process.env.PUBLIC_CHANNEL_ID || '@warcup2026_withdrawals';
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') return res.status(200).send('OK');
+
+    // Verify request comes from Telegram
+    if (WEBHOOK_SECRET) {
+        const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
+        if (secretHeader !== WEBHOOK_SECRET) {
+            return res.status(403).send('Forbidden');
+        }
+    }
 
     const update = req.body;
     
@@ -39,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         if (tx && tx.status === 'PENDING') {
                             const totalAmount = Number(tx.amount) + Number(tx.fee);
                             
-                            // 2. Update Transaction
+                            // 2. Update Transaction status
                             await fetch(`${supabaseUrl}/rest/v1/Transaction?id=eq.${id}`, {
                                 method: 'PATCH',
                                 headers: { 
@@ -49,26 +58,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                                 body: JSON.stringify({ status: 'COMPLETED', updatedAt: new Date().toISOString() })
                             });
 
-                            // 3. Update Wallet
-                            const walletRes = await fetch(`${supabaseUrl}/rest/v1/Wallet?userId=eq.${tx.userId}&select=*`, {
-                                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                            // H-5 FIX: Use RPC for atomic wallet update instead of read-then-write
+                            await fetch(`${supabaseUrl}/rest/v1/rpc/complete_webhook_withdrawal`, {
+                                method: 'POST',
+                                headers: { 
+                                    'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ 
+                                    p_user_id: tx.userId,
+                                    p_amount: totalAmount 
+                                })
                             });
-                            const [wallet] = await walletRes.json();
-
-                            if (wallet) {
-                                await fetch(`${supabaseUrl}/rest/v1/Wallet?userId=eq.${tx.userId}`, {
-                                    method: 'PATCH',
-                                    headers: { 
-                                        'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        frozenBalance: Number(wallet.frozenBalance) - totalAmount,
-                                        totalSpent: (Number(wallet.totalSpent) || 0) + totalAmount,
-                                        updatedAt: new Date().toISOString()
-                                    })
-                                });
-                            }
                         }
                     } catch (dbErr) {
                         console.error('Database sync error in webhook:', dbErr);

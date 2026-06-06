@@ -5,8 +5,12 @@ export function validateInitData(initData) {
   
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    console.warn('TELEGRAM_BOT_TOKEN is not set.');
-    // For development without bot token, parse without validation
+    // SECURITY: Never skip validation in production
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+      console.error('TELEGRAM_BOT_TOKEN is not set in production!');
+      return null;
+    }
+    console.warn('TELEGRAM_BOT_TOKEN is not set — dev mode, skipping HMAC validation.');
     const parsed = new URLSearchParams(initData);
     const userStr = parsed.get('user');
     return userStr ? JSON.parse(decodeURIComponent(userStr)) : null;

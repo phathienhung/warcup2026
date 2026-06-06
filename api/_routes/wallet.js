@@ -1,6 +1,7 @@
 import { supabase } from '../_lib/supabase.js';
 import { validateInitData } from '../_lib/auth.js';
 import { Bot, InlineKeyboard } from 'grammy';
+import { verifyDeposit } from '../_lib/ton.js';
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const bot = botToken ? new Bot(botToken) : null;
@@ -35,6 +36,8 @@ export default async function handler(req, res) {
     const { action, amount, address } = req.body;
 
     if (action === 'withdraw') {
+      if (!amount || typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+      if (!address || typeof address !== 'string' || address.length < 20 || address.length > 100) return res.status(400).json({ error: 'Invalid wallet address' });
       try {
         const todayStr = new Date().toISOString().split('T')[0];
         const { data: result, error: rpcError } = await supabase.rpc('request_withdrawal', {
@@ -74,53 +77,60 @@ export default async function handler(req, res) {
     }
 
     if (action === 'deposit') {
+      if (!amount || typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
       try {
-        // Automatic Deposit Approval MVP
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('ton_balance, ton_deposited, username')
-          .eq('telegram_id', user.id)
-          .single();
-          
-        const newBalance = Number(dbUser?.ton_balance || 0) + amount;
-        const newDeposited = Number(dbUser?.ton_deposited || 0) + amount;
-
-        // 1. Add balance & total deposited
-        await supabase.from('users').update({ ton_balance: newBalance, ton_deposited: newDeposited }).eq('telegram_id', user.id);
-
-        // 2. Insert completed tx
-        const { data: tx, error: txError } = await supabase
-          .from('wallet_transactions')
-          .insert({
-            user_id: user.id,
-            tx_type: 'deposit',
-            amount_ton: amount,
-            wallet_address: address,
-            status: 'completed'
-          })
-          .select()
-          .single();
-
-        // 3. Notify Admin & Public
-        if (bot) {
-          const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
-          
-          if (adminChatId) {
-             const text = `📥 *NEW DEPOSIT (AUTO)*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
-             await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
-          }
-          
-          if (publicChannelId) {
-             const textPub = `🚀 ${usernameStr} just successfully deposited *${amount} TON* to hunt for World Cup tickets! 🏆`;
-             await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'Markdown' });
-          }
+        const inGameWallet = process.env.VITE_IN_GAME_WALLET || 'UQANRLrMrxdOpOidj71SCe9Bgx6cNX6CcMEygRpxmkvEMt2K';
+        
+        // Verify with TON blockchain
+        const verification = await verifyDeposit(address, inGameWallet, amount);
+        if (!verification.success) {
+          return res.status(400).json({ error: verification.error });
         }
 
-        return res.status(200).json({ success: true });
+        // C-4 FIX: Atomic deposit — check tx_hash uniqueness + update balance in one transaction
+        const { data: result, error: rpcError } = await supabase.rpc('process_deposit', {
+          p_user_id: user.id,
+          p_amount: amount,
+          p_wallet_address: address,
+          p_tx_hash: verification.txHash
+        });
+
+        if (rpcError) throw rpcError;
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
+        }
+
+        // Notify Admin & Public (non-critical, fire-and-forget)
+        try {
+          if (bot) {
+            const { data: dbUser } = await supabase.from('users').select('username').eq('telegram_id', user.id).single();
+            const usernameStr = dbUser?.username ? `@${dbUser.username}` : `ID: ${user.id}`;
+            
+            if (adminChatId) {
+               const text = `📥 *NEW DEPOSIT (AUTO)*\nUser: ${usernameStr}\nAmount: *${amount} TON*\nWallet: \`${address}\``;
+               await bot.api.sendMessage(adminChatId, text, { parse_mode: 'Markdown' });
+            }
+            
+            if (publicChannelId) {
+               const textPub = `🚀 ${usernameStr} just successfully deposited *${amount} TON* to hunt for World Cup tickets! 🏆`;
+               await bot.api.sendMessage(publicChannelId, textPub, { parse_mode: 'Markdown' });
+            }
+          }
+        } catch (notifyErr) {
+          console.error('Notification error (non-critical):', notifyErr);
+        }
+
+        return res.status(200).json({ 
+          success: true,
+          newBalance: result.newBalance,
+          newDeposited: result.newDeposited
+        });
       } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Internal server error' });
       }
     }
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

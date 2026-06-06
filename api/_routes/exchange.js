@@ -13,6 +13,9 @@ export default async function handler(req, res) {
       const { data: config } = await supabase.from('game_config').select('exchange_rate_votes, exchange_rate_ton, exchange_ads_required').eq('id', 1).single();
       
       if (!config) return res.status(400).json({ error: 'Missing configuration' });
+      if (config.exchange_rate_votes <= 0 || config.exchange_rate_ton <= 0) {
+        return res.status(400).json({ error: 'Invalid exchange rates' });
+      }
 
       const { data: result, error: rpcError } = await supabase.rpc('exchange_votes_for_ton', {
         p_user_id: user.id,

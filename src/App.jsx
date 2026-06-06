@@ -81,6 +81,17 @@ export default function App() {
 
   useEffect(() => {
     initApp();
+
+    const handleVisChange = () => {
+      if (document.visibilityState === 'hidden') {
+        useGameStore.getState().syncTaps();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisChange);
+    };
   }, []);
 
   async function initApp() {
@@ -97,13 +108,6 @@ export default function App() {
       stopEnergyRegen();
       startEnergyRegen();
 
-      // Sync pending taps when user leaves / minimizes the app
-      const handleVisChange = () => {
-        if (document.visibilityState === 'hidden') {
-          useGameStore.getState().syncTaps();
-        }
-      };
-      document.addEventListener('visibilitychange', handleVisChange);
     } catch (err) {
       console.error('[App] Init failed:', err);
     } finally {

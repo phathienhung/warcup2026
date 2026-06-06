@@ -53,56 +53,26 @@ export default async function handler(req, res) {
 
     if (action === 'claim_streak') {
       try {
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('login_streak, last_streak_claim, mining_speed_bonus, energy_regen_bonus, max_energy')
-          .eq('telegram_id', user.id)
-          .single();
-        if (!dbUser) return res.status(404).json({ error: 'User not found' });
-
         const today = new Date().toISOString().split('T')[0];
-        if (dbUser.last_streak_claim === today) {
-          return res.status(400).json({ error: 'Already claimed today' });
-        }
-
-        // Increment streak (capped at 7, reset after 7)
-        const currentStreak = dbUser.login_streak || 0;
-        const newStreak = currentStreak >= 7 ? 1 : currentStreak + 1;
-
-        // Read per-day reward config from streak_rewards table
-        // Fallback to defaults if table doesn't exist
-        let speedReward = 1;
-        let maxEnergyReward = 100;
         
-        try {
-          const { data: streakConfig } = await supabase
-            .from('streak_rewards')
-            .select('speed_reward, max_energy_reward')
-            .eq('day', newStreak)
-            .single();
-          if (streakConfig) {
-            speedReward = streakConfig.speed_reward || 1;
-            maxEnergyReward = streakConfig.max_energy_reward || 100;
-          }
-        } catch (e) {
-          // Table may not exist yet, use defaults
+        const { data: result, error: rpcError } = await supabase.rpc('claim_streak_reward', {
+          p_user_id: user.id,
+          p_today_str: today
+        });
+
+        if (rpcError) throw rpcError;
+
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
         }
 
-        const updates = {
-          last_streak_claim: today,
-          login_streak: newStreak,
-          mining_speed_bonus: (dbUser.mining_speed_bonus || 0) + speedReward,
-          max_energy: (dbUser.max_energy || 1000) + maxEnergyReward
-        };
-
-        await supabase.from('users').update(updates).eq('telegram_id', user.id);
         return res.status(200).json({ 
           success: true, 
-          day: newStreak,
-          speedReward,
-          maxEnergyReward,
+          day: result.day,
+          speedReward: result.speedReward,
+          maxEnergyReward: result.maxEnergyReward,
           rewardType: 'streak',
-          rewardValue: `+${speedReward} Speed, +${maxEnergyReward} Max Energy`
+          rewardValue: `+${result.speedReward} Speed, +${result.maxEnergyReward} Max Energy`
         });
       } catch (e) {
         console.error('Claim streak error:', e);
@@ -135,7 +105,7 @@ export default async function handler(req, res) {
           
           if (!tgData.ok) {
             console.error('Telegram API Error:', tgData);
-            return res.status(400).json({ error: `Verification failed for chat ${channelId}. Telegram says: ${tgData.description || 'Unknown error'}` });
+            return res.status(400).json({ error: 'Verification failed. Please make sure you joined the channel.' });
           }
           
           const memberStatus = tgData.result.status;
@@ -167,38 +137,18 @@ export default async function handler(req, res) {
         const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
         if (!task) return res.status(404).json({ error: 'Task not found' });
 
-        const { data: userTask } = await supabase.from('user_tasks').select('*').eq('user_id', user.id).eq('task_id', taskId).single();
-        
-        if (!userTask || userTask.status !== 'verified') {
-          return res.status(400).json({ error: 'Task not verified yet' });
-        }
+        const { data: result, error: rpcError } = await supabase.rpc('claim_reward', {
+          p_user_id: user.id,
+          p_task_id: taskId,
+          p_reward_type: task.reward_type,
+          p_reward_value: task.reward_value
+        });
 
-        const { data: dbUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
-        
-        const updates = {};
-        if (task.reward_type === 'speed') {
-          updates.mining_speed_bonus = (dbUser.mining_speed_bonus || 0) + task.reward_value;
-        } else if (task.reward_type === 'regen') {
-          updates.energy_regen_bonus = (dbUser.energy_regen_bonus || 0) + task.reward_value;
-        } else if (task.reward_type === 'max_energy') {
-          updates.max_energy = (dbUser.max_energy || 1000) + task.reward_value;
-        } else if (task.reward_type === 'energy') {
-          updates.energy = (dbUser.energy || 0) + task.reward_value;
-        } else if (task.reward_type === 'votes') {
-          updates.total_votes = (dbUser.total_votes || 0) + task.reward_value;
-          updates.available_votes = (dbUser.available_votes || 0) + task.reward_value;
-        } else if (task.reward_type === 'xp') {
-          updates.xp = (dbUser.xp || 0) + task.reward_value;
-        }
+        if (rpcError) throw rpcError;
 
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('users').update(updates).eq('telegram_id', user.id);
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
         }
-        await supabase.from('user_tasks').update({
-          status: 'claimed',
-          completed: true,
-          completed_at: new Date().toISOString()
-        }).eq('id', userTask.id);
 
         return res.status(200).json({ success: true, rewardType: task.reward_type, rewardValue: task.reward_value });
       } catch (e) {
@@ -253,12 +203,18 @@ export default async function handler(req, res) {
 
         if (!isValid) return res.status(400).json({ error: 'Achievement condition not met' });
 
-        // Update DB
-        const newVotes = (dbUser.total_votes || 0) + rewardVotes;
-        const newAvail = (dbUser.available_votes || 0) + rewardVotes;
-        
-        await supabase.from('users').update({ total_votes: newVotes, available_votes: newAvail }).eq('telegram_id', user.id);
-        await supabase.from('user_tasks').upsert({ user_id: user.id, task_id: `ach_${taskId}`, status: 'claimed', completed: true, completed_at: new Date().toISOString() }, { onConflict: 'user_id,task_id,reset_date' });
+        // Update DB via RPC
+        const { data: result, error: rpcError } = await supabase.rpc('claim_achievement_reward', {
+          p_user_id: user.id,
+          p_achievement_id: `ach_${taskId}`,
+          p_reward_votes: rewardVotes
+        });
+
+        if (rpcError) throw rpcError;
+
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
+        }
         
         return res.status(200).json({ success: true, rewardVotes });
       } catch (e) {

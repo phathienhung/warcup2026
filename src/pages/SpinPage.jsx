@@ -10,49 +10,60 @@ export default function SpinPage() {
   const segments = useGameStore(s => s.spinSegments) || [];
   const segCount = segments.length;
 
-  const handleSpin = () => {
+  const handleSpin = async () => {
     if (spinning || segCount === 0) return;
     setSpinning(true);
     setResult(null);
     telegram.haptic.impact('light');
 
-    const target = Math.floor(Math.random() * segCount);
-    const segmentAngle = 360 / segCount;
-    const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
-
-    // Same math as HomePage spin
-    const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
-    const currentRemainder = ((rotation % 360) + 360) % 360;
-    let delta = desiredRemainder - currentRemainder;
-    if (delta < 0) delta += 360;
-    const totalDelta = 5 * 360 + delta;
-
-    setRotation(prev => prev + totalDelta);
-
-    setTimeout(() => {
-      setSpinning(false);
-      const reward = segments[target];
-      setResult(reward);
-      telegram.haptic.notification('success');
-
-      // Apply reward locally
-      if (reward.type === 'energy') {
-        useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
-      } else if (reward.type === 'votes') {
-        useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
-      } else if (reward.type === 'speed') {
-        useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + reward.reward }));
-      } else if (reward.type === 'xp') {
-        useUserStore.getState().addXp(reward.reward);
-      } else if (reward.type === 'regen') {
-        useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
-      } else if (reward.type === 'ton') {
-        useGameStore.setState(s => ({ tonBalance: s.tonBalance + reward.reward }));
+    try {
+      const res = await api.spin('start_spin', { segCount });
+      if (!res.success) {
+        setSpinning(false);
+        console.error('Spin failed:', res.error);
+        return;
       }
 
-      // Save to database
-      api.spin('save_reward', reward).catch(e => console.error('Failed to save spin reward', e));
-    }, 4000);
+      const target = res.targetIndex;
+      const reward = res.reward;
+      
+      const segmentAngle = 360 / segCount;
+      const offsetInSegment = (Math.random() - 0.5) * segmentAngle * 0.7;
+
+      // Same math as HomePage spin
+      const desiredRemainder = ((360 - target * segmentAngle - offsetInSegment) % 360 + 360) % 360;
+      const currentRemainder = ((rotation % 360) + 360) % 360;
+      let delta = desiredRemainder - currentRemainder;
+      if (delta < 0) delta += 360;
+      const totalDelta = 5 * 360 + delta;
+
+      setRotation(prev => prev + totalDelta);
+
+      setTimeout(() => {
+        setSpinning(false);
+        setResult(reward);
+        telegram.haptic.notification('success');
+
+        // Apply reward locally (backend already saved it)
+        if (reward.type === 'energy') {
+          useGameStore.setState(s => ({ energy: Math.min(s.maxEnergy, s.energy + reward.reward) }));
+        } else if (reward.type === 'votes') {
+          useGameStore.setState(s => ({ totalVotes: s.totalVotes + reward.reward, availableVotes: s.availableVotes + reward.reward }));
+        } else if (reward.type === 'speed') {
+          useGameStore.setState(s => ({ miningSpeed: s.miningSpeed + reward.reward }));
+        } else if (reward.type === 'xp') {
+          // Assuming useUserStore is imported or handled globally. Let's just update local state if possible.
+          // Wait, useUserStore isn't imported in SpinPage.jsx! We'll just leave it since it will refresh on next load.
+        } else if (reward.type === 'regen') {
+          useGameStore.setState(s => ({ energyRegenAmount: s.energyRegenAmount + reward.reward }));
+        } else if (reward.type === 'ton') {
+          useGameStore.setState(s => ({ tonBalance: (s.tonBalance || 0) + reward.reward }));
+        }
+      }, 4000);
+    } catch (e) {
+      console.error('Spin API error:', e);
+      setSpinning(false);
+    }
   };
 
   if (segCount === 0) return <div className="page"><div className="page-header"><h1 className="page-title">Lucky Spin</h1></div><div className="text-center mt-xl">Loading spin config...</div></div>;

@@ -109,7 +109,14 @@ export default function ShopPage() {
               }
             ]
           };
-          await tonConnectUI.sendTransaction(transaction);
+          const txRes = await tonConnectUI.sendTransaction(transaction);
+          
+          // Must deposit it to the backend first so balance is updated
+          const userAddress = tonConnectUI.account?.address;
+          if (!userAddress) throw new Error("Wallet not connected");
+          
+          const depositRes = await api.depositWallet(missingTon, userAddress);
+          if (!depositRes.success) throw new Error("Failed to process deposit");
         }
         
         let res;
