@@ -294,7 +294,7 @@ export default function ProfilePage() {
           <div style={{ fontSize: '3rem', margin: '16px 0' }}>🤝</div>
           <h3 style={{ marginBottom: '8px' }}>Invite & Earn</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-            Earn <strong style={{color:'var(--neon-green)'}}>{f1}%</strong> of F1 votes, <strong style={{color:'var(--gold)'}}>{f2}%</strong> of F2 votes, and <strong style={{color:'var(--neon-blue)'}}>{f3}%</strong> of F3 votes! Plus milestone bonuses below!
+            Earn <strong style={{color:'var(--neon-green)'}}>{f1}%</strong> of F1 TON deposited, <strong style={{color:'var(--gold)'}}>{f2}%</strong> of F2 TON deposited, and <strong style={{color:'var(--neon-blue)'}}>{f3}%</strong> of F3 TON deposited! Plus milestone bonuses below!
           </p>
           
           <div className="referral-code-box mb-md">
@@ -305,6 +305,38 @@ export default function ProfilePage() {
           <button className="btn btn-primary btn-full mb-lg" onClick={handleInvite}>
             SEND INVITE LINK
           </button>
+
+          {useUserStore.getState().unclaimedRefTon !== undefined && (
+            <div className="card mb-lg text-center" style={{ background: 'rgba(0, 152, 234, 0.1)', borderColor: 'var(--neon-blue)', textAlign: 'center' }}>
+              <h3 style={{ color: 'var(--neon-blue)', marginBottom: '8px' }}>Unclaimed TON Commissions</h3>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '16px' }}>
+                {(useUserStore.getState().unclaimedRefTon || 0).toFixed(2)} TON
+              </div>
+              <button 
+                className="btn btn-primary btn-full" 
+                onClick={async () => {
+                  if (claimingMilestone) return;
+                  setClaimingMilestone(true);
+                  try {
+                    const res = await api.claimTonCommissions();
+                    if (res.success) {
+                      telegram.haptic.notification('success');
+                      const data = await api.auth();
+                      if (data?.user) useGameStore.getState().setGameState(data.user);
+                      alert(`Successfully claimed ${res.claimed_amount} TON!`);
+                    }
+                  } catch (err) {
+                    alert(err.message || 'Failed to claim');
+                  } finally {
+                    setClaimingMilestone(false);
+                  }
+                }}
+                disabled={claimingMilestone || !useUserStore.getState().unclaimedRefTon || useUserStore.getState().unclaimedRefTon <= 0}
+              >
+                {claimingMilestone ? 'CLAIMING...' : 'CLAIM COMMISSIONS'}
+              </button>
+            </div>
+          )}
 
           {milestones.length > 0 && (
             <>
