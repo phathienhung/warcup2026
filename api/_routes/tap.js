@@ -77,11 +77,23 @@ export default async function handler(req, res) {
         levelUpData = { newLevel, rewardType, rewardValue };
       }
 
+      // Re-fetch the user to return the updated stats required by gameStore.js
+      const { data: updatedUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+      const updatedStats = computeStats(updatedUser, friendCount || 0, 1.0, 1.0);
+
       return res.status(200).json({ 
         success: true, 
         taps_applied: result.taps_applied, 
         votes_earned: result.votes_earned,
-        levelUp: levelUpData
+        levelUp: levelUpData,
+        stats: {
+          totalVotes: updatedUser.total_votes,
+          availableVotes: updatedUser.available_votes,
+          miningSpeed: updatedStats.speed.final,
+          miningSpeedBase: updatedStats.speed.base,
+          miningSpeedMultiply: updatedStats.speed.multiply,
+          nationMultiplier: 1.0
+        }
       });
     } catch (e) {
       console.error('Tap post error:', e);
