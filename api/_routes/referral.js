@@ -72,6 +72,37 @@ export default async function handler(req, res) {
         console.error('Milestone claim error:', err);
         return res.status(500).json({ error: 'Internal server error' });
       }
+    } else if (action === 'unclaimed_commissions') {
+      try {
+        const { data: commissions, error } = await supabase
+          .from('referral_commissions')
+          .select('id, referred_id, tier, deposit_amount, commission_amount, created_at, users!referred_id(username, first_name)')
+          .eq('referrer_id', user.id)
+          .eq('is_claimed', false)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Also check if there's any legacy unclaimed_ref_ton that isn't in the new table
+        const { data: dbUser } = await supabase.from('users').select('unclaimed_ref_ton').eq('telegram_id', user.id).single();
+        const legacyTotal = dbUser?.unclaimed_ref_ton || 0;
+        
+        const sumNew = commissions ? commissions.reduce((acc, curr) => acc + curr.commission_amount, 0) : 0;
+        
+        let legacyAmount = 0;
+        if (legacyTotal > sumNew) {
+          legacyAmount = legacyTotal - sumNew;
+        }
+
+        return res.status(200).json({ 
+          success: true, 
+          commissions: commissions || [],
+          legacyAmount
+        });
+      } catch (err) {
+        console.error('Fetch unclaimed error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
     } else if (action === 'claim_ton_commissions') {
       try {
         const { data: result, error: rpcError } = await supabase.rpc('claim_ton_commissions', {

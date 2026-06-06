@@ -10,6 +10,7 @@ import ShopPage from './pages/ShopPage';
 import ProfilePage from './pages/ProfilePage';
 import PredictionPage from './pages/PredictionPage';
 import WalletPage from './pages/WalletPage';
+import UnclaimedModal from './components/UnclaimedModal';
 
 function LoadingScreen() {
   return (
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
       <NavBar />
+      <UnclaimedModal />
     </div>
   );
 }
