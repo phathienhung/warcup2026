@@ -73,6 +73,25 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Internal server error' });
       }
     }
+
+    if (action === 'claim_commissions') {
+      try {
+        const { data: result, error: rpcError } = await supabase.rpc('claim_commissions', {
+          p_user_id: user.id
+        });
+        
+        if (rpcError) throw rpcError;
+        
+        if (!result.success) {
+          return res.status(400).json({ error: result.error });
+        }
+        
+        return res.status(200).json({ success: true, tonClaimed: result.ton_claimed });
+      } catch (err) {
+        console.error('Commission claim error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    }
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

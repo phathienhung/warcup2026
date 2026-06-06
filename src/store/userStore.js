@@ -37,6 +37,7 @@ export const useUserStore = create((set, get) => ({
   predictionsWon: 0,
   predictionsTotal: 0,
   winStreak: 0,
+  unclaimedRefTon: 0,
 
   // ── Auth ──────────────────────────────────────────
   async authenticate() {
@@ -69,6 +70,7 @@ export const useUserStore = create((set, get) => ({
         totalTaps: data.user.total_taps || 0,
         boostExpiresAt: data.user.boost_expires_at || null,
         boostMultiplier: data.user.boost_multiplier || 1,
+        unclaimedRefTon: data.user.unclaimed_ref_ton || 0,
       });
       const currentLevel = data.user.level || 1;
       set({ xpToNextLevel: get().getXpForLevel(currentLevel + 1) });

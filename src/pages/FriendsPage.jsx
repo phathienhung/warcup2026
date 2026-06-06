@@ -6,7 +6,7 @@ import api from '../lib/api';
 import { formatNumber, formatNumberFull } from '../data/constants';
 
 export default function FriendsPage() {
-  const { referralCode, friendCount, telegramId } = useUserStore();
+  const { referralCode, friendCount, telegramId, unclaimedRefTon } = useUserStore();
   const { referralSystem, claimedFriendMilestones } = useGameStore();
   
   const [friendsList, setFriendsList] = useState([]);
@@ -62,6 +62,27 @@ export default function FriendsPage() {
     }
   };
 
+  const handleClaimCommissions = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const res = await api.claimCommissions();
+      if (res.success) {
+        telegram.haptic.notification('success');
+        const data = await api.auth();
+        if (data?.user) {
+          useGameStore.getState().setGameState(data.user);
+          useUserStore.getState().updateStats({ unclaimedRefTon: 0 });
+        }
+        alert(`🎉 Successfully claimed ${formatNumber(res.tonClaimed)} TON!`);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to claim commissions');
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const f1 = referralSystem?.f1_percent || 10;
   const f2 = referralSystem?.f2_percent || 5;
   const f3 = referralSystem?.f3_percent || 2;
@@ -78,9 +99,22 @@ export default function FriendsPage() {
         <div style={{ fontSize: '3rem', margin: '16px 0' }}>🤝</div>
         <h3 style={{ marginBottom: '8px' }}>Multi-Tier Referral System</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-          Earn <strong style={{color:'var(--neon-green)'}}>{f1}%</strong> of F1 votes, <strong style={{color:'var(--gold)'}}>{f2}%</strong> of F2 votes, and <strong style={{color:'var(--neon-blue)'}}>{f3}%</strong> of F3 votes! Plus milestone bonuses below!
+          Earn <strong style={{color:'var(--neon-green)'}}>{f1}%</strong> of F1 TON deposited, <strong style={{color:'var(--gold)'}}>{f2}%</strong> of F2 TON deposited, and <strong style={{color:'var(--neon-blue)'}}>{f3}%</strong> of F3 TON deposited! Plus milestone bonuses below!
         </p>
         
+        {unclaimedRefTon > 0 && (
+          <div className="card-gold mb-md" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,215,0,0.1)' }}>
+            <div style={{ color: 'var(--gold)', fontWeight: 'bold', marginBottom: '8px' }}>Unclaimed Commissions</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+              <img src="/ton-logo.png" alt="TON" style={{ width: '24px', height: '24px' }} onError={(e) => e.target.style.display='none'} />
+              {unclaimedRefTon.toFixed(2)} TON
+            </div>
+            <button className="btn btn-primary btn-sm btn-full" onClick={handleClaimCommissions} disabled={claiming}>
+              {claiming ? 'CLAIMING...' : 'CLAIM COMMISSIONS'}
+            </button>
+          </div>
+        )}
+
         <div className="referral-code-box mb-md">
           <div className="referral-code" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inviteLink}</div>
           <button className="copy-btn" onClick={handleCopy}>COPY</button>
