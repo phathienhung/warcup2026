@@ -39,12 +39,25 @@ export async function verifyDeposit(senderAddress, receiverAddress, expectedAmou
     // H-1 FIX: Allow 2% tolerance for network fees, but no more
     const minNano = expectedNano - (expectedNano * BigInt(2) / BigInt(100));
 
+    // Helper to convert friendly address to raw
+    const toRaw = (friendly) => {
+      try {
+        const buf = Buffer.from(friendly.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+        const workchain = buf.readInt8(1);
+        const hash = buf.slice(2, 34).toString('hex');
+        return `${workchain}:${hash}`;
+      } catch (e) {
+        return friendly; // fallback
+      }
+    };
+    const rawSender = toRaw(senderAddress);
+
     // Look for a matching transaction
     for (const tx of data.result) {
       if (!tx.in_msg || !tx.in_msg.source) continue;
       
       // Match sender address
-      if (tx.in_msg.source !== senderAddress) continue;
+      if (tx.in_msg.source !== senderAddress && tx.in_msg.source !== rawSender) continue;
 
       const txValue = BigInt(tx.in_msg.value || '0');
       

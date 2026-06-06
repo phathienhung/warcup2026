@@ -58,19 +58,35 @@ export default function WalletPage() {
 
     try {
       await tonConnectUI.sendTransaction(transaction);
-      const res = await api.depositWallet(Number(depositAmount), address);
-      if (res.success) {
-        useGameStore.setState({ 
-          tonBalance: res.newBalance,
-          tonDeposited: res.newDeposited
-        });
-        alert('Deposit transaction sent! Balance updated.');
-        setDepositAmount('');
-        loadHistory();
+      alert('Transaction sent! Verifying on TON blockchain (may take up to 20s)...');
+      
+      let success = false;
+      for (let i = 0; i < 4; i++) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        try {
+          const res = await api.depositWallet(Number(depositAmount), address);
+          if (res.success) {
+            useGameStore.setState({ 
+              tonBalance: res.newBalance,
+              tonDeposited: res.newDeposited
+            });
+            alert('Deposit transaction verified! Balance updated.');
+            setDepositAmount('');
+            loadHistory();
+            success = true;
+            break;
+          }
+        } catch (err) {
+          console.log('Verification retry...', err);
+        }
+      }
+      
+      if (!success) {
+        alert('Verification is taking longer than expected. Please check your balance later, it will be credited automatically.');
       }
     } catch (e) {
       console.error(e);
-      alert('Transaction cancelled or failed');
+      alert('Transaction cancelled or failed in wallet');
     }
   };
 
