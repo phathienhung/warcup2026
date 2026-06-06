@@ -228,7 +228,7 @@ export default function ShopPage() {
               You own all available NFTs! 🎉
             </div>
           ) : availableNfts.map((player) => (
-            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ id: player.id, type: 'nft', name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_votes || 1.5, priceType: 'ton' })}>
+            <div key={player.id} className={`nft-card nft-rarity-${player.rarity}`} onClick={() => setSelectedItem({ id: player.id, type: 'nft', name: player.player_name, icon: '👤', image_url: player.image_url, description: `NFT Collectible of ${player.player_name}`, price: player.price_ton || 1.5, priceType: 'ton' })}>
               <div className="nft-card-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {player.image_url ? (
                   <img src={player.image_url} alt={player.player_name} style={{ width: '100%', objectFit: 'contain' }} />
@@ -242,7 +242,7 @@ export default function ShopPage() {
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   {player.minted_count || 0}/{player.total_supply || '∞'} minted
                 </div>
-                <button className="btn btn-primary btn-full btn-sm mt-md">{player.price_votes || 1.5} TON</button>
+                <button className="btn btn-primary btn-full btn-sm mt-md">{player.price_ton || 1.5} TON</button>
               </div>
             </div>
           ))}
