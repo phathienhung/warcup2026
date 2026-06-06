@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useGameStore from '../store/gameStore';
 import telegram from '../lib/telegram';
+import api from '../lib/api';
 
 export default function SpinPage() {
   const [spinning, setSpinning] = useState(false);
@@ -17,7 +18,7 @@ export default function SpinPage() {
     telegram.haptic.impact('light');
 
     try {
-      const res = await api.spin('start_spin', { segCount });
+      const res = await api.spin('start_spin', null, segCount);
       if (!res.success) {
         setSpinning(false);
         console.error('Spin failed:', res.error);

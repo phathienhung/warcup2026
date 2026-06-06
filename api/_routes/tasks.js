@@ -137,6 +137,12 @@ export default async function handler(req, res) {
         const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single();
         if (!task) return res.status(404).json({ error: 'Task not found' });
 
+        // C-2 FIX: Verify that the task is actually marked as 'verified' in user_tasks
+        const { data: userTask } = await supabase.from('user_tasks').select('status').eq('user_id', user.id).eq('task_id', taskId).single();
+        if (!userTask || userTask.status !== 'verified') {
+          return res.status(403).json({ error: 'Task has not been verified yet' });
+        }
+
         const { data: result, error: rpcError } = await supabase.rpc('claim_reward', {
           p_user_id: user.id,
           p_task_id: taskId,
