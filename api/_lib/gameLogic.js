@@ -35,7 +35,7 @@ export function computeStats(dbUser, friendCount = 0, nftMultiplier = 1.0, natio
     speed: { final: finalSpeed, base: baseSpeed, multiply: finalSpeed - baseSpeed },
     regen: { final: finalRegen, base: baseRegen, multiply: finalRegen - baseRegen },
     maxEnergy: { final: finalMaxEnergy, base: baseMaxEnergy, multiply: finalMaxEnergy - baseMaxEnergy },
-    rewardMultiplier: nftMultiplier * nationMultiplier,
+    rewardMultiplier: nftMultiplier,
     nftMultiplier,
     nationMultiplier
   };

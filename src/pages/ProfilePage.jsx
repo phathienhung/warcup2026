@@ -202,7 +202,7 @@ export default function ProfilePage() {
         
         {nationData && (
           <div className="badge badge-blue">
-            {nationData.flag} Team {nationData.name} (x{Number(nationData.final_multiplier || nationData.multiplier || 1).toFixed(2)} Bonus)
+            {nationData.flag} Team {nationData.name} (x{(useGameStore.getState().nationMultiplier || 1).toFixed(1)} Bonus)
           </div>
         )}
       </div>
