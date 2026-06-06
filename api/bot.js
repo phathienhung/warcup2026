@@ -78,7 +78,8 @@ export default async function handler(req, res) {
         // SECURITY: Only allow actions from the admin chat
         const isFromAdmin = adminChatId && (String(cb.from?.id) === String(adminChatId) || String(cb.message?.chat?.id) === String(adminChatId));
         if (!isFromAdmin) {
-          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
+          const debugMsg = `⛔ Unauthorized.\nYour ID: ${cb.from?.id}\nChat ID: ${cb.message?.chat?.id}\nExpected: ${adminChatId}`;
+          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: debugMsg, show_alert: true });
           return res.status(200).send('OK');
         }
         const txId = cbData.replace('withdraw_', '');
@@ -118,7 +119,8 @@ export default async function handler(req, res) {
         // SECURITY: Only allow actions from the admin chat
         const isFromAdmin = adminChatId && (String(cb.from?.id) === String(adminChatId) || String(cb.message?.chat?.id) === String(adminChatId));
         if (!isFromAdmin) {
-          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: '⛔ Unauthorized', show_alert: true });
+          const debugMsg = `⛔ Unauthorized.\nYour ID: ${cb.from?.id}\nChat ID: ${cb.message?.chat?.id}\nExpected: ${adminChatId}`;
+          await telegramAPI('answerCallbackQuery', { callback_query_id: cb.id, text: debugMsg, show_alert: true });
           return res.status(200).send('OK');
         }
         const txId = cbData.replace('reject_', '');
