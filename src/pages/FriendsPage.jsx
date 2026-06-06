@@ -91,7 +91,7 @@ export default function FriendsPage() {
         </button>
       </div>
 
-      {useUserStore.getState().unclaimedRefTon > 0 && (
+      {useUserStore.getState().unclaimedRefTon !== undefined && (
         <div className="card mb-lg text-center" style={{ background: 'rgba(0, 152, 234, 0.1)', borderColor: 'var(--neon-blue)' }}>
           <h3 style={{ color: 'var(--neon-blue)', marginBottom: '8px' }}>Unclaimed TON Commissions</h3>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '16px' }}>
@@ -116,7 +116,7 @@ export default function FriendsPage() {
                 setClaiming(false);
               }
             }}
-            disabled={claiming}
+            disabled={claiming || !useUserStore.getState().unclaimedRefTon || useUserStore.getState().unclaimedRefTon <= 0}
           >
             {claiming ? 'CLAIMING...' : 'CLAIM COMMISSIONS'}
           </button>
