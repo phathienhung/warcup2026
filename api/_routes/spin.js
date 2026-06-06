@@ -62,13 +62,15 @@ export default async function handler(req, res) {
         }
         
         const reward = segments[targetIndex];
+        const rewardType = reward.type || 'nothing';
+        const rewardAmount = Number(reward.reward) || 0;
         
         // Use Atomic RPC to execute spin
         const { data: rpcResult, error: rpcError } = await supabase.rpc('execute_spin', {
           p_user_id: user.id,
           p_today_str: today,
-          p_reward_type: reward.type,
-          p_reward_amount: reward.reward
+          p_reward_type: rewardType,
+          p_reward_amount: rewardAmount
         });
 
         if (rpcError) throw rpcError;
