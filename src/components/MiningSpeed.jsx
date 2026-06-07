@@ -10,7 +10,7 @@ export default function MiningSpeed({ speed, base, multiply, nationMultiplier = 
       </div>
       {(multiply > 0 || nationMultiplier > 1.0) && (
         <div style={{ fontSize: '0.75rem', color: 'var(--neon-green)', background: 'var(--glass-bg)', padding: '2px 8px', borderRadius: '12px' }}>
-          {`((base:${base} + multiply:${Math.round(speed / nationMultiplier) - base}) x Nation boost: ${nationMultiplier} = ${speed})`}
+          {`((base:${base} + multiply:${multiply}) x Nation boost: ${nationMultiplier} = ${speed})`}
         </div>
       )}
     </div>
