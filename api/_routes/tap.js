@@ -39,7 +39,7 @@ export default async function handler(req, res) {
           let template = n.nft_templates;
           if (Array.isArray(template)) template = template[0];
           const mult = Number(template?.vote_multiplier);
-          if (!isNaN(mult) && mult > 0) nftMultiplier += mult;
+          if (!isNaN(mult) && mult > 1.0) nftMultiplier += (mult - 1.0);
         });
       }
       

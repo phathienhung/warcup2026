@@ -15,7 +15,7 @@ export function computeStats(dbUser, friendCount = 0, nftBonus = 0.0, nationMult
   
   // 1. Speed
   const baseSpeed = 1 + friendCount + (level - 1) + Math.floor(streak / 7) + speedBonus;
-  const multiply = Number(nftBonus.toFixed(1));
+  const multiply = Number((baseSpeed * nftBonus).toFixed(1));
   let boost = nationMultiplier;
   
   if (dbUser.boost_expires_at && new Date(dbUser.boost_expires_at) > new Date()) {
