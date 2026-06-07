@@ -24,6 +24,11 @@ async function telegramAPI(method, payload) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('Bot Webhook Endpoint Active');
 
+  const secretToken = req.headers['x-telegram-bot-api-secret-token'];
+  if (process.env.TELEGRAM_WEBHOOK_SECRET && secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+    return res.status(401).send('Unauthorized webhook payload');
+  }
+
   const update = req.body;
   if (!update) return res.status(200).send('OK');
 
@@ -141,17 +146,13 @@ export default async function handler(req, res) {
           p_amount: Number(tx.amount_ton)
         });
         if (refundErr) {
-          // Fallback: direct atomic SQL if RPC doesn't exist yet
-          const { error: fallbackErr } = await db.from('users')
-            .update({ ton_balance: db.raw ? undefined : Number(tx.amount_ton) })
-            .eq('telegram_id', tx.user_id);
-          // Use raw increment as last resort
-          if (fallbackErr) {
-            await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single().then(({ data }) => {
-              if (data) db.from('users').update({ ton_balance: Number(data.ton_balance || 0) + Number(tx.amount_ton) }).eq('telegram_id', tx.user_id);
-            });
-          }
           console.error('Refund RPC error (using fallback):', refundErr);
+          const { data } = await db.from('users').select('ton_balance').eq('telegram_id', tx.user_id).single();
+          if (data) {
+            await db.from('users').update({ 
+              ton_balance: Number(data.ton_balance || 0) + Number(tx.amount_ton) 
+            }).eq('telegram_id', tx.user_id);
+          }
         }
 
         // Update DB

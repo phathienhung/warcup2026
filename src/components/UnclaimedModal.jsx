@@ -14,25 +14,29 @@ export default function UnclaimedModal() {
   const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    const checkUnclaimed = async () => {
+      try {
+        const res = await api.getUnclaimedCommissions();
+        if (isMounted && res && res.success) {
+          if ((res.commissions && res.commissions.length > 0) || res.legacyAmount > 0) {
+            setCommissions(Array.isArray(res.commissions) ? res.commissions : []);
+            setLegacyAmount(Number(res.legacyAmount) || 0);
+            setIsOpen(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check unclaimed commissions', err);
+      }
+    };
+
     if (isAuthenticated) {
       checkUnclaimed();
     }
+    
+    return () => { isMounted = false; };
   }, [isAuthenticated]);
-
-  const checkUnclaimed = async () => {
-    try {
-      const res = await api.getUnclaimedCommissions();
-      if (res && res.success) {
-        if ((res.commissions && res.commissions.length > 0) || res.legacyAmount > 0) {
-          setCommissions(res.commissions || []);
-          setLegacyAmount(res.legacyAmount || 0);
-          setIsOpen(true);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to check unclaimed commissions', err);
-    }
-  };
 
   const handleClaim = async () => {
     if (claiming) return;
@@ -45,7 +49,7 @@ export default function UnclaimedModal() {
         if (data?.user) {
           useGameStore.getState().setGameState(data.user);
         }
-        alert(`Successfully claimed ${res.claimed_amount.toFixed(6)} TON!`);
+        alert(`Successfully claimed ${Number(res.claimed_amount || 0).toFixed(6)} TON!`);
         setIsOpen(false);
       }
     } catch (err) {
@@ -57,8 +61,8 @@ export default function UnclaimedModal() {
 
   if (!isOpen) return null;
 
-  const totalNew = commissions.reduce((sum, c) => sum + c.commission_amount, 0);
-  const total = totalNew + legacyAmount;
+  const totalNew = commissions.reduce((sum, c) => sum + Number(c.commission_amount || 0), 0);
+  const total = totalNew + Number(legacyAmount || 0);
 
   return (
     <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="🎉 You Have Unclaimed TON!">
@@ -76,7 +80,7 @@ export default function UnclaimedModal() {
               </div>
             </div>
             <div style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>
-              +{c.commission_amount.toFixed(6)} TON
+              +{Number(c.commission_amount || 0).toFixed(6)} TON
             </div>
           </div>
         ))}
@@ -88,7 +92,7 @@ export default function UnclaimedModal() {
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>From older deposits</div>
             </div>
             <div style={{ color: 'var(--neon-green)', fontWeight: 'bold' }}>
-              +{legacyAmount.toFixed(6)} TON
+              +{Number(legacyAmount || 0).toFixed(6)} TON
             </div>
           </div>
         )}
@@ -96,7 +100,7 @@ export default function UnclaimedModal() {
         <div className="card mt-sm text-center" style={{ background: 'rgba(0, 152, 234, 0.1)', borderColor: 'var(--neon-blue)' }}>
           <h3 style={{ color: 'var(--neon-blue)', marginBottom: '4px' }}>Total to Claim</h3>
           <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
-            {total.toFixed(6)} TON
+            {Number(total || 0).toFixed(6)} TON
           </div>
         </div>
 

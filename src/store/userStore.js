@@ -44,6 +44,8 @@ export const useUserStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const data = await api.auth();
+      if (!data?.user) throw new Error('Invalid authentication response');
+
       set({
         user: data.user,
         isAuthenticated: true,
@@ -115,8 +117,10 @@ export const useUserStore = create((set, get) => ({
   },
 
   addXp(amount) {
+    const validAmount = Number(amount) || 0;
+    if (validAmount <= 0) return;
     const state = get();
-    const newTotalXp = state.xp + amount;
+    const newTotalXp = (state.xp || 0) + validAmount;
     
     // Find new level
     const baseXp = useGameStore.getState().configBaseXp || 1000;

@@ -9,8 +9,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 export default async function handler(req, res) {
   // Security check for cron invocation
-  const authHeader = req.headers.authorization;
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const authHeader = req.headers['authorization'];
+  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

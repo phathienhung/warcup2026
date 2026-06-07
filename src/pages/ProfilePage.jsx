@@ -104,6 +104,47 @@ export default function ProfilePage() {
   const nations = useGameStore(s => s.nations) || [];
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadFriends = async () => {
+      setLoadingFriends(true);
+      try {
+        const data = await api.getFriends();
+        if (isMounted) setFriendsList(Array.isArray(data?.friends) ? data.friends : []);
+      } catch (err) {
+        console.error('Failed to load friends', err);
+      } finally {
+        if (isMounted) setLoadingFriends(false);
+      }
+    };
+
+    const loadNfts = async () => {
+      setLoadingNfts(true);
+      try {
+        const data = await api.getMyNFTs();
+        if (isMounted) setMyNfts(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to load NFTs', err);
+      } finally {
+        if (isMounted) setLoadingNfts(false);
+      }
+    };
+
+    const loadAnnouncements = async () => {
+      try {
+        const data = await api.getAnnouncements();
+        if (isMounted) setAnnouncements(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to load announcements', err);
+        if (isMounted) {
+          setAnnouncements([
+            { id: 1, title: '🎉 Welcome to World Cup Mining War 2026!', content: 'Start mining Votes now and prepare for the biggest football event!', created_at: new Date().toISOString(), type: 'info' },
+            { id: 2, title: '⚽ Prediction System is LIVE!', content: 'You can now predict World Cup 2026 match outcomes and win from the Parimutuel pool!', created_at: new Date().toISOString(), type: 'feature' }
+          ]);
+        }
+      }
+    };
+
     if (activeTab === 'nfts') {
       loadNfts();
     } else if (activeTab === 'friends') {
@@ -111,45 +152,9 @@ export default function ProfilePage() {
     } else if (activeTab === 'log') {
       loadAnnouncements();
     }
+
+    return () => { isMounted = false; };
   }, [activeTab]);
-
-  const loadFriends = async () => {
-    setLoadingFriends(true);
-    try {
-      const data = await api.getFriends();
-      setFriendsList(data?.friends || []);
-    } catch (err) {
-      console.error('Failed to load friends', err);
-    } finally {
-      setLoadingFriends(false);
-    }
-  };
-
-  const loadNfts = async () => {
-    setLoadingNfts(true);
-    try {
-      const data = await api.getMyNFTs();
-      setMyNfts(data || []);
-    } catch (err) {
-      console.error('Failed to load NFTs', err);
-    } finally {
-      setLoadingNfts(false);
-    }
-  };
-
-  const loadAnnouncements = async () => {
-    try {
-      const data = await api.getAnnouncements();
-      setAnnouncements(data || []);
-    } catch (err) {
-      console.error('Failed to load announcements', err);
-      // Fallback announcements
-      setAnnouncements([
-        { id: 1, title: '🎉 Welcome to World Cup Mining War 2026!', content: 'Start mining Votes now and prepare for the biggest football event!', created_at: new Date().toISOString(), type: 'info' },
-        { id: 2, title: '⚽ Prediction System is LIVE!', content: 'You can now predict World Cup 2026 match outcomes and win from the Parimutuel pool!', created_at: new Date().toISOString(), type: 'feature' }
-      ]);
-    }
-  };
 
   const nationData = nations.find(n => n.code === favoriteNation) || NATIONS.find(n => n.code === favoriteNation);
   const initial = (firstName || username || 'P').charAt(0).toUpperCase();
@@ -176,7 +181,7 @@ export default function ProfilePage() {
         if (data?.user) {
           useGameStore.getState().setGameState(data.user);
         }
-        alert(`🎉 Milestone Claimed! You got +${formatNumber(res.rewardValue)} ${res.rewardType.toUpperCase()}`);
+        alert(`🎉 Milestone Claimed! You got +${formatNumber(res.rewardValue)} ${(res.rewardType || '').toUpperCase()}`);
       }
     } catch (err) {
       alert(err.message || 'Failed to claim milestone');
@@ -327,7 +332,7 @@ export default function ProfilePage() {
                       <div>
                         <div style={{ fontWeight: 'bold' }}>Invite {m.count} Friends</div>
                         <div style={{ fontSize: '0.8rem', color: isReady ? 'var(--gold)' : 'var(--text-secondary)' }}>
-                          Reward: +{formatNumber(m.reward)} {m.reward_type.toUpperCase()} {rewardIcon}
+                          Reward: +{formatNumber(m.reward)} {(m.reward_type || '').toUpperCase()} {rewardIcon}
                         </div>
                       </div>
                       

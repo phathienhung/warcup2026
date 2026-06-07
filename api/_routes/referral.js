@@ -9,14 +9,18 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
-    const { data: dbUser } = await supabase.from('users').select('referral_code').eq('telegram_id', user.id).single();
-    
-    const { data: friends } = await supabase.from('referrals').select('referred_id, users!referred_id(username, total_votes)').eq('referrer_id', user.id);
-    
-    return res.status(200).json({
-      referral_code: dbUser?.referral_code,
-      friends: friends || []
-    });
+    try {
+      const { data: dbUser } = await supabase.from('users').select('referral_code').eq('telegram_id', user.id).single();
+      const { data: friends } = await supabase.from('referrals').select('referred_id, users!referred_id(username, total_votes)').eq('referrer_id', user.id);
+      
+      return res.status(200).json({
+        referral_code: dbUser?.referral_code,
+        friends: friends || []
+      });
+    } catch (err) {
+      console.error('GET referral error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
 
   if (req.method === 'POST') {
