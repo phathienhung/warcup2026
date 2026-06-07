@@ -64,17 +64,24 @@ export default async function handler(req, res) {
       // Get NFT multiplier
       const { data: userNfts } = await supabase
         .from('user_nfts')
-        .select('nft_templates(vote_multiplier)')
+        .select('nft_templates(vote_multiplier, mining_bonus)')
         .eq('user_id', user.id);
         
       let nftMultiplier = 1.0;
+      let nftMiningBonus = 0;
       if (userNfts) {
         userNfts.forEach(n => {
           let template = n.nft_templates;
           if (Array.isArray(template)) template = template[0];
+          
           const mult = Number(template?.vote_multiplier);
           if (!isNaN(mult) && mult > 0) {
             nftMultiplier += (mult - 1.0);
+          }
+          
+          const bonus = Number(template?.mining_bonus);
+          if (!isNaN(bonus) && bonus > 0) {
+            nftMiningBonus += bonus;
           }
         });
       }
@@ -85,7 +92,7 @@ export default async function handler(req, res) {
         if (nStats) nationMultiplier = Number(nStats.final_multiplier);
       }
 
-      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier, nftMiningBonus);
 
       // Offline energy regen
       const regenRateMs = 1000;
@@ -114,6 +121,7 @@ export default async function handler(req, res) {
       dbUser._stats = stats;
       dbUser._friendCount = friendCount;
       dbUser._nftMultiplier = nftMultiplier;
+      dbUser._nftMiningBonus = nftMiningBonus;
       dbUser._nationMultiplier = nationMultiplier;
     }
 
@@ -139,8 +147,9 @@ export default async function handler(req, res) {
     // Calculate mining speed (use cached stats if available)
     const friendCount = dbUser._friendCount || 0;
     const nftMultiplier = dbUser._nftMultiplier || 1.0;
+    const nftMiningBonus = dbUser._nftMiningBonus || 0;
     const nationMultiplier = dbUser._nationMultiplier || 1.0;
-    const stats = dbUser._stats || computeStats(dbUser, friendCount, nftMultiplier, nationMultiplier);
+    const stats = dbUser._stats || computeStats(dbUser, friendCount, nftMultiplier, nationMultiplier, nftMiningBonus);
 
     return res.status(200).json({ 
       user: {

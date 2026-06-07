@@ -32,14 +32,19 @@ export default async function handler(req, res) {
       // Calculate speed correctly with multipliers
       const { count: friendCount } = await supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('referrer_id', user.id);
       
-      const { data: userNfts } = await supabase.from('user_nfts').select('nft_templates(vote_multiplier)').eq('user_id', user.id);
+      const { data: userNfts } = await supabase.from('user_nfts').select('nft_templates(vote_multiplier, mining_bonus)').eq('user_id', user.id);
       let nftMultiplier = 1.0;
+      let nftMiningBonus = 0;
       if (userNfts) {
         userNfts.forEach(n => {
           let template = n.nft_templates;
           if (Array.isArray(template)) template = template[0];
+          
           const mult = Number(template?.vote_multiplier);
           if (!isNaN(mult) && mult > 0) nftMultiplier += (mult - 1.0);
+          
+          const bonus = Number(template?.mining_bonus);
+          if (!isNaN(bonus) && bonus > 0) nftMiningBonus += bonus;
         });
       }
       
@@ -49,7 +54,7 @@ export default async function handler(req, res) {
         if (nStats) nationMultiplier = Number(nStats.final_multiplier);
       }
       
-      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier, nftMiningBonus);
       
       // Use Atomic execute_tap RPC
       const { data: result, error: rpcError } = await supabase.rpc('execute_tap', {
@@ -96,7 +101,7 @@ export default async function handler(req, res) {
 
       // Re-fetch the user to return the updated stats required by gameStore.js
       const { data: updatedUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
-      const updatedStats = computeStats(updatedUser, friendCount || 0, nftMultiplier, nationMultiplier);
+      const updatedStats = computeStats(updatedUser, friendCount || 0, nftMultiplier, nationMultiplier, nftMiningBonus);
 
       return res.status(200).json({ 
         success: true, 
