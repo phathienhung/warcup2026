@@ -37,7 +37,7 @@ export default function FriendsPage() {
   };
 
   const handleInvite = () => {
-    const text = `Join World Cup Mining War 2026 and win big! ⚽🏆`;
+    const text = `Join War Cup 2026, mine and predict to get TON for free !`;
     telegram.shareUrl(inviteLink, text);
   };
 
