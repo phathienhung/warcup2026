@@ -15,29 +15,31 @@ export function computeStats(dbUser, friendCount = 0, nftBonus = 0.0, nationMult
   
   // 1. Speed
   const baseSpeed = 1 + friendCount + (level - 1) + Math.floor(streak / 7) + speedBonus;
-  const multiply = Number((baseSpeed * nftBonus).toFixed(1));
+  const speedMultiply = Number((baseSpeed * nftBonus).toFixed(1));
   let boost = nationMultiplier;
   
   if (dbUser.boost_expires_at && new Date(dbUser.boost_expires_at) > new Date()) {
     boost *= (dbUser.boost_multiplier || 1);
   }
   
-  const finalSpeed = Math.round((baseSpeed + multiply) * boost);
+  const finalSpeed = Math.round((baseSpeed + speedMultiply) * boost);
 
   // 2. Regen
   const baseRegen = 1 + (dbUser.energy_regen_bonus || 0);
-  const finalRegen = Math.round(baseRegen * (1 + multiply));
+  const regenMultiply = Number((baseRegen * nftBonus).toFixed(1));
+  const finalRegen = Math.round(baseRegen + regenMultiply);
 
   // 3. Max Energy
   const baseMaxEnergy = dbUser.max_energy || 1000;
-  const finalMaxEnergy = Math.round(baseMaxEnergy * (1 + multiply));
+  const maxEnergyMultiply = Number((baseMaxEnergy * nftBonus).toFixed(1));
+  const finalMaxEnergy = Math.round(baseMaxEnergy + maxEnergyMultiply);
 
   return {
-    speed: { final: finalSpeed, base: baseSpeed, multiply: multiply },
-    regen: { final: finalRegen, base: baseRegen, multiply: multiply },
-    maxEnergy: { final: finalMaxEnergy, base: baseMaxEnergy, multiply: multiply },
-    rewardMultiplier: 1 + multiply,
-    nftMultiplier: multiply,
+    speed: { final: finalSpeed, base: baseSpeed, multiply: speedMultiply },
+    regen: { final: finalRegen, base: baseRegen, multiply: regenMultiply },
+    maxEnergy: { final: finalMaxEnergy, base: baseMaxEnergy, multiply: maxEnergyMultiply },
+    rewardMultiplier: 1 + nftBonus,
+    nftMultiplier: nftBonus,
     nationMultiplier
   };
 }
