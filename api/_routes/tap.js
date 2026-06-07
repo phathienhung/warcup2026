@@ -29,10 +29,27 @@ export default async function handler(req, res) {
 
       if (!dbUser) return res.status(404).json({ error: 'User not found' });
 
-      // Calculate speed
+      // Calculate speed correctly with multipliers
       const { count: friendCount } = await supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('referrer_id', user.id);
       
-      const stats = computeStats(dbUser, friendCount || 0, 1.0, 1.0); // For atomic tap we'll just pass basic speed, in reality we'd pull nfts
+      const { data: userNfts } = await supabase.from('user_nfts').select('nft_templates(vote_multiplier)').eq('user_id', user.id);
+      let nftMultiplier = 1.0;
+      if (userNfts) {
+        userNfts.forEach(n => {
+          let template = n.nft_templates;
+          if (Array.isArray(template)) template = template[0];
+          const mult = Number(template?.vote_multiplier);
+          if (!isNaN(mult) && mult > 0) nftMultiplier += (mult - 1.0);
+        });
+      }
+      
+      let nationMultiplier = 1.0;
+      if (dbUser.favorite_nation) {
+        const { data: nStats } = await supabase.from('vw_nation_multipliers').select('final_multiplier').eq('code', dbUser.favorite_nation).single();
+        if (nStats) nationMultiplier = Number(nStats.final_multiplier);
+      }
+      
+      const stats = computeStats(dbUser, friendCount || 0, nftMultiplier, nationMultiplier);
       
       // Use Atomic execute_tap RPC
       const { data: result, error: rpcError } = await supabase.rpc('execute_tap', {
@@ -79,7 +96,7 @@ export default async function handler(req, res) {
 
       // Re-fetch the user to return the updated stats required by gameStore.js
       const { data: updatedUser } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
-      const updatedStats = computeStats(updatedUser, friendCount || 0, 1.0, 1.0);
+      const updatedStats = computeStats(updatedUser, friendCount || 0, nftMultiplier, nationMultiplier);
 
       return res.status(200).json({ 
         success: true, 
@@ -92,7 +109,8 @@ export default async function handler(req, res) {
           miningSpeed: updatedStats.speed.final,
           miningSpeedBase: updatedStats.speed.base,
           miningSpeedMultiply: updatedStats.speed.multiply,
-          nationMultiplier: 1.0
+          nationMultiplier: nationMultiplier,
+          nftMultiplier: nftMultiplier
         }
       });
     } catch (e) {
