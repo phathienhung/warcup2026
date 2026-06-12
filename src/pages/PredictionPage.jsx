@@ -244,7 +244,7 @@ export default function PredictionPage() {
               <div className="match-card mb-md">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <div>{timeStr} - {dateStr}</div>
-                  {match.status === 'completed' ? (
+                  {match.status === 'finished' ? (
                     <div style={{ color: 'var(--neon-green)', fontWeight: 'bold', textShadow: 'var(--glow-green)' }}>
                       MATCH ENDED
                     </div>
@@ -269,8 +269,8 @@ export default function PredictionPage() {
                   </div>
                   
                   <div className="match-vs">
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: match.status === 'completed' ? 'var(--neon-green)' : 'inherit' }}>
-                      {match.status === 'completed' ? `${match.score_a} - ${match.score_b}` : 'VS'}
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: match.status === 'finished' ? 'var(--neon-green)' : 'inherit' }}>
+                      {match.status === 'finished' ? `${match.score_a} - ${match.score_b}` : 'VS'}
                     </div>
                   </div>
                   
