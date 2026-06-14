@@ -87,12 +87,6 @@ export default async function handler(req, res) {
 
       if (['FT', 'AET', 'PEN'].includes(fixtureStatus)) {
         newStatus = 'finished';
-        
-        // Handle penalties if applicable
-        if (fixtureStatus === 'PEN' && fixture.score.penalty.home !== null) {
-          finalScoreA = fixture.score.penalty.home;
-          finalScoreB = fixture.score.penalty.away;
-        }
 
         if (finalScoreA > finalScoreB) winner = 'A';
         else if (finalScoreB > finalScoreA) winner = 'B';
