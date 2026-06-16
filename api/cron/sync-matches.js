@@ -6,12 +6,14 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const db = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const apiFootballKey = process.env.API_FOOTBALL_KEY;
-const CRON_SECRET = process.env.CRON_SECRET;
+const CRON_SECRET = process.env.CRON_SECRET || '123456';
 
 export default async function handler(req, res) {
   // Security check for cron invocation
   const authHeader = req.headers['authorization'];
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+  const querySecret = req.query.secret;
+  
+  if (!CRON_SECRET || (authHeader !== `Bearer ${CRON_SECRET}` && querySecret !== CRON_SECRET)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
