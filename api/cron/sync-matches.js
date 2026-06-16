@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getConsensusScore } from '../_lib/consensus.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -87,10 +88,30 @@ export default async function handler(req, res) {
 
       if (['FT', 'AET', 'PEN'].includes(fixtureStatus)) {
         newStatus = 'finished';
+      }
+
+      // 3. Apply Consensus Engine
+      const consensus = await getConsensusScore(
+        match.team_a, match.team_b, today, 
+        scoreA, scoreB, newStatus
+      );
+
+      if (consensus.resolved) {
+        finalScoreA = consensus.scoreA;
+        finalScoreB = consensus.scoreB;
+        newStatus = consensus.status;
 
         if (finalScoreA > finalScoreB) winner = 'A';
         else if (finalScoreB > finalScoreA) winner = 'B';
         else winner = 'DRAW';
+      } else {
+        // If consensus failed or disputed, we keep the match open or live
+        if (consensus.status === 'disputed') {
+          newStatus = 'disputed';
+        } else {
+          // just wait for next tick
+          continue;
+        }
       }
 
       // Update DB if there's a change

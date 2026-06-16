@@ -10,16 +10,17 @@
     "vercel-build": "vite build"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@tonconnect/ui-react": "^2.0.9",
+    "cheerio": "^1.2.0",
+    "grammy": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
-    "zustand": "^4.5.5",
-    "@supabase/supabase-js": "^2.45.4",
-    "@tonconnect/ui-react": "^2.0.9",
-    "grammy": "^1.30.0"
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "vite": "^5.4.8",
-    "@vitejs/plugin-react": "^4.3.2"
+    "@vitejs/plugin-react": "^4.3.2",
+    "vite": "^5.4.8"
   }
 }
