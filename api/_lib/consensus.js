@@ -9,7 +9,10 @@ export async function getConsensusScore(teamA, teamB, date, primaryScoreA, prima
   // Source 1: API-Football (Primary)
   const source1 = { scoreA: primaryScoreA, scoreB: primaryScoreB, status: primaryStatus };
   
-  if (primaryStatus !== 'finished') {
+  // If API-Football says finished, OR we don't have API-Football data but the match is past its duration (e.g. 2.5 hours)
+  const isPast = new Date() > new Date(new Date(date).getTime() + 2.5 * 60 * 60 * 1000);
+  
+  if (primaryStatus !== 'finished' && !isPast) {
     return { resolved: false, ...source1 }; // Match is still live or upcoming
   }
 

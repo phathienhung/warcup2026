@@ -42,54 +42,60 @@ export default async function handler(req, res) {
 
     console.log(`Found ${matches.length} matches to sync.`);
 
-    // Group by date to fetch from API-Football efficiently
-    // API-Football endpoint: GET https://v3.football.api-sports.io/fixtures?date=YYYY-MM-DD
-    const today = new Date().toISOString().split('T')[0];
-    
-    const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`, {
-      method: 'GET',
-      headers: {
-        'x-rapidapi-host': 'v3.football.api-sports.io',
-        'x-rapidapi-key': apiFootballKey
-      }
-    });
-
-    const apiData = await response.json();
-    if (!apiData || !apiData.response) {
-      throw new Error('Invalid response from API-Football');
+    // Group matches by date
+    const matchesByDate = {};
+    for (const match of matches) {
+      const dateString = match.match_date.split('T')[0];
+      if (!matchesByDate[dateString]) matchesByDate[dateString] = [];
+      matchesByDate[dateString].push(match);
     }
-
-    const fixtures = apiData.response;
+    
     let processedCount = 0;
 
-    // 2. Map and update matches
-    for (const match of matches) {
-      // Find matching fixture in API data
-      // (Using basic string matching for team names. In production, mapping team IDs is safer)
-      const fixture = fixtures.find(f => 
-        (f.teams.home.name.toLowerCase().includes(match.team_a.toLowerCase()) || 
-         match.team_a.toLowerCase().includes(f.teams.home.name.toLowerCase())) ||
-        (f.teams.away.name.toLowerCase().includes(match.team_b.toLowerCase()) || 
-         match.team_b.toLowerCase().includes(f.teams.away.name.toLowerCase()))
-      );
-
-      if (!fixture) continue;
-
-      const scoreA = fixture.goals.home;
-      const scoreB = fixture.goals.away;
-      const fixtureStatus = fixture.fixture.status.short; // FT (Full Time), PEN (Penalties), 1H, 2H, etc.
-
-      let newStatus = match.status;
-      if (['1H', '2H', 'HT', 'ET', 'P'].includes(fixtureStatus)) {
-        newStatus = 'live';
+    for (const dateString in matchesByDate) {
+      console.log(`Fetching fixtures for ${dateString}...`);
+      
+      let fixtures = [];
+      if (apiFootballKey) {
+        const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${dateString}`, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'v3.football.api-sports.io',
+            'x-rapidapi-key': apiFootballKey
+          }
+        });
+        const apiData = await response.json();
+        if (apiData && apiData.response) {
+          fixtures = apiData.response;
+        }
       }
 
-      let winner = null;
-      let finalScoreA = scoreA;
-      let finalScoreB = scoreB;
+      // Process matches for this date
+      for (const match of matchesByDate[dateString]) {
+        const fixture = fixtures.find(f => 
+          (f.teams.home.name.toLowerCase().includes(match.team_a.toLowerCase()) || 
+           match.team_a.toLowerCase().includes(f.teams.home.name.toLowerCase())) ||
+          (f.teams.away.name.toLowerCase().includes(match.team_b.toLowerCase()) || 
+           match.team_b.toLowerCase().includes(f.teams.away.name.toLowerCase()))
+        );
 
-      if (['FT', 'AET', 'PEN'].includes(fixtureStatus)) {
-        newStatus = 'finished';
+      let newStatus = match.status;
+      let winner = null;
+      let finalScoreA = null;
+      let finalScoreB = null;
+
+      if (fixture) {
+        finalScoreA = fixture.goals.home;
+        finalScoreB = fixture.goals.away;
+        const fixtureStatus = fixture.fixture.status.short;
+
+        if (['1H', '2H', 'HT', 'ET', 'P'].includes(fixtureStatus)) {
+          newStatus = 'live';
+        }
+
+        if (['FT', 'AET', 'PEN'].includes(fixtureStatus)) {
+          newStatus = 'finished';
+        }
       }
 
       // 3. Apply Consensus Engine
@@ -140,7 +146,8 @@ export default async function handler(req, res) {
         }
         processedCount++;
       }
-    }
+    } // End of inner loop
+  } // End of outer loop
 
     return res.status(200).json({ status: 'success', processed: processedCount });
 
