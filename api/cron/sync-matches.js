@@ -1,12 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
-import { getConsensusScore } from '../_lib/consensus.js';
+import * as cheerio from 'cheerio';
+import fetch from 'node-fetch';
+import { normalizeTeamName } from '../_lib/countryMap.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const db = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-const apiFootballKey = process.env.API_FOOTBALL_KEY;
 const CRON_SECRET = process.env.CRON_SECRET || '123456';
+const SOURCE_URL = 'https://www.24h.com.vn/world-cup-2026/ket-qua-thi-dau-bong-da-world-cup-2026-moi-nhat-c860a1747405.html';
 
 export default async function handler(req, res) {
   // Security check for cron invocation
@@ -21,14 +23,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Database not configured' });
   }
 
-  if (!apiFootballKey) {
-    console.log('API_FOOTBALL_KEY not set. Skipping live sync.');
-    return res.status(200).json({ status: 'skipped', reason: 'No API Key' });
-  }
-
   try {
-    // 1. Get matches from DB that need updating
-    // Matches that have started (match_date <= NOW) and are not finished
+    // 1. Get pending matches from DB (started but not finished)
     const { data: matches, error } = await db
       .from('matches')
       .select('*')
@@ -37,117 +33,94 @@ export default async function handler(req, res) {
 
     if (error) throw error;
     if (!matches || matches.length === 0) {
-      return res.status(200).json({ status: 'success', message: 'No live matches to sync' });
+      return res.status(200).json({ status: 'success', message: 'No pending matches to sync' });
     }
 
-    console.log(`Found ${matches.length} matches to sync.`);
+    console.log(`Found ${matches.length} matches to check.`);
 
-    // Group matches by date
-    const matchesByDate = {};
-    for (const match of matches) {
-      const dateString = match.match_date.split('T')[0];
-      if (!matchesByDate[dateString]) matchesByDate[dateString] = [];
-      matchesByDate[dateString].push(match);
+    // 2. Fetch the hardcoded 24h article URL
+    console.log(`Fetching results from: ${SOURCE_URL}`);
+    const response = await fetch(SOURCE_URL);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch source URL: ${response.statusText}`);
     }
-    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // 3. Extract scores from article
+    const scrapedResults = [];
+    $('.match-hot, .box-items').each((i, el) => {
+      const text = $(el).text().replace(/\s+/g, ' ').trim();
+      // Format usually: "Bảng F 15/06 03:00 Trận 10 Hà Lan 2 - 2 Nhật Bản Video highlight"
+      const matchRegex = /Trận\s+\d+\s+(.+?)\s+(\d+)\s*-\s*(\d+)\s+(.+?)(?:\s+Video|\s*$)/i;
+      const m = text.match(matchRegex);
+      if (m) {
+        const teamAName = m[1].trim();
+        const scoreA = parseInt(m[2]);
+        const scoreB = parseInt(m[3]);
+        const teamBName = m[4].trim();
+
+        const isoA = normalizeTeamName(teamAName);
+        const isoB = normalizeTeamName(teamBName);
+
+        if (isoA && isoB) {
+          scrapedResults.push({
+            team_a: isoA,
+            team_b: isoB,
+            score_a: scoreA,
+            score_b: scoreB,
+            status: 'finished'
+          });
+        }
+      }
+    });
+
+    console.log(`Parsed ${scrapedResults.length} completed matches from the article.`);
+
     let processedCount = 0;
 
-    for (const dateString in matchesByDate) {
-      console.log(`Fetching fixtures for ${dateString}...`);
-      
-      let fixtures = [];
-      if (apiFootballKey) {
-        const response = await fetch(`https://v3.football.api-sports.io/fixtures?date=${dateString}`, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-host': 'v3.football.api-sports.io',
-            'x-rapidapi-key': apiFootballKey
-          }
-        });
-        const apiData = await response.json();
-        if (apiData && apiData.response) {
-          fixtures = apiData.response;
-        }
-      }
-
-      // Process matches for this date
-      for (const match of matchesByDate[dateString]) {
-        const fixture = fixtures.find(f => 
-          (f.teams.home.name.toLowerCase().includes(match.team_a.toLowerCase()) || 
-           match.team_a.toLowerCase().includes(f.teams.home.name.toLowerCase())) ||
-          (f.teams.away.name.toLowerCase().includes(match.team_b.toLowerCase()) || 
-           match.team_b.toLowerCase().includes(f.teams.away.name.toLowerCase()))
-        );
-
-      let newStatus = match.status;
-      let winner = null;
-      let finalScoreA = null;
-      let finalScoreB = null;
-
-      if (fixture) {
-        finalScoreA = fixture.goals.home;
-        finalScoreB = fixture.goals.away;
-        const fixtureStatus = fixture.fixture.status.short;
-
-        if (['1H', '2H', 'HT', 'ET', 'P'].includes(fixtureStatus)) {
-          newStatus = 'live';
-        }
-
-        if (['FT', 'AET', 'PEN'].includes(fixtureStatus)) {
-          newStatus = 'finished';
-        }
-      }
-
-      // 3. Apply Consensus Engine
-      const consensus = await getConsensusScore(
-        match.team_a, match.team_b, today, 
-        scoreA, scoreB, newStatus
+    // 4. Reconcile pending matches with scraped results
+    for (const match of matches) {
+      // Find matching result
+      const result = scrapedResults.find(r => 
+        (r.team_a === match.team_a && r.team_b === match.team_b) ||
+        (r.team_a === match.team_b && r.team_b === match.team_a)
       );
 
-      if (consensus.resolved) {
-        finalScoreA = consensus.scoreA;
-        finalScoreB = consensus.scoreB;
-        newStatus = consensus.status;
-
-        if (finalScoreA > finalScoreB) winner = 'A';
-        else if (finalScoreB > finalScoreA) winner = 'B';
-        else winner = 'DRAW';
-      } else {
-        // If consensus failed or disputed, we keep the match open or live
-        if (consensus.status === 'disputed') {
-          newStatus = 'disputed';
-        } else {
-          // just wait for next tick
-          continue;
-        }
+      if (!result) {
+        console.log(`No results found yet for ${match.team_a} vs ${match.team_b}`);
+        continue;
       }
 
-      // Update DB if there's a change
-      if (match.score_a !== finalScoreA || match.score_b !== finalScoreB || match.status !== newStatus) {
-        
-        if (newStatus === 'finished' && winner) {
-          // Resolve match atomically
-          const { data: resolveResult, error: resolveErr } = await db.rpc('resolve_match', {
-            p_match_id: match.id,
-            p_score_a: finalScoreA,
-            p_score_b: finalScoreB,
-            p_winner: winner
-          });
-          
-          if (resolveErr) console.error(`Failed to resolve match ${match.id}:`, resolveErr);
-          else console.log(`Resolved match ${match.id}:`, resolveResult);
-        } else {
-          // Just update live scores
-          await db.from('matches').update({
-            score_a: finalScoreA,
-            score_b: finalScoreB,
-            status: newStatus
-          }).eq('id', match.id);
-        }
+      // We found a result! Determine actual score A and B based on db ordering
+      let finalScoreA, finalScoreB;
+      if (result.team_a === match.team_a) {
+        finalScoreA = result.score_a;
+        finalScoreB = result.score_b;
+      } else {
+        finalScoreA = result.score_b;
+        finalScoreB = result.score_a;
+      }
+
+      let winner = 'DRAW';
+      if (finalScoreA > finalScoreB) winner = 'A';
+      else if (finalScoreB > finalScoreA) winner = 'B';
+
+      // Resolve match atomically via RPC
+      const { data: resolveResult, error: resolveErr } = await db.rpc('resolve_match', {
+        p_match_id: match.id,
+        p_score_a: finalScoreA,
+        p_score_b: finalScoreB,
+        p_winner: winner
+      });
+      
+      if (resolveErr) {
+        console.error(`Failed to resolve match ${match.id}:`, resolveErr);
+      } else {
+        console.log(`Successfully resolved ${match.team_a} vs ${match.team_b} (${finalScoreA}-${finalScoreB}):`, resolveResult);
         processedCount++;
       }
-    } // End of inner loop
-  } // End of outer loop
+    }
 
     return res.status(200).json({ status: 'success', processed: processedCount });
 
