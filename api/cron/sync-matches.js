@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     $('.match-hot, .box-items').each((i, el) => {
       const text = $(el).text().replace(/\s+/g, ' ').trim();
       // Format usually: "Bảng F 15/06 03:00 Trận 10 Hà Lan 2 - 2 Nhật Bản Video highlight"
-      const matchRegex = /Trận\s+\d+\s+(.+?)\s+(\d+)\s*-\s*(\d+)\s+(.+?)(?:\s+Video|\s*$)/i;
+      const matchRegex = /Trận\s+\d+\s+(.*?)\s+(\d+)\s*-\s*(\d+)\s+(.*?)(?:\s+Video|\s+VTV|$)/i;
       const m = text.match(matchRegex);
       if (m) {
         const teamAName = m[1].trim();
