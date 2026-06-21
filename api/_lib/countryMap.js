@@ -22,6 +22,11 @@ const countryNameMap = {
   "séc": "CZ",
   "ch séc": "CZ",
   "serbia": "RS",
+  "áo": "AT",
+  "bosnia": "BA",
+  "chdc congo": "CD",
+  "congo": "CD",
+  "thổ nhĩ kỳ": "TR",
 
   // Châu Mỹ
   "brazil": "BR",
@@ -36,6 +41,10 @@ const countryNameMap = {
   "mexico": "MX",
   "canada": "CA",
   "costa rica": "CR",
+  "haiti": "HT",
+  "panama": "PA",
+  "paraguay": "PY",
+  "curacao": "CW",
 
   // Châu Á
   "nhật bản": "JP",
@@ -52,6 +61,9 @@ const countryNameMap = {
   "thái lan": "TH",
   "indonesia": "ID",
   "malaysia": "MY",
+  "iraq": "IQ",
+  "jordan": "JO",
+  "uzbekistan": "UZ",
 
   // Châu Phi
   "senegal": "SN",
@@ -65,6 +77,8 @@ const countryNameMap = {
   "bờ biển ngà": "CI",
   "nam phi": "ZA",
   "south africa": "ZA",
+  "cabo verde": "CV",
+  "tunisia": "TN",
 
   // Châu Đại Dương
   "new zealand": "NZ"
